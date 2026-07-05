@@ -1,0 +1,50 @@
+{
+  "username": "Nikolay",
+  "password": "Nikolay123$Password",
+  "role": "USER"
+}
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "accountNumber": "ACC1",
+  "balance": 0,
+  "transactions": []
+}
+
+{
+  "id": 2,
+  "accountNumber": "ACC2",
+  "balance": 0,
+  "transactions": []
+}
+
+################################################
+
+{
+  "username": "Mary",
+  "password": "Mary123$Password",
+  "role": "USER"
+}
+Authorization: Basic TWFyeTpNYXJ5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 3,
+  "accountNumber": "ACC3",
+  "balance": 0,
+  "transactions": []
+
+################################################
+
+### Депозит денег пользователем
+### Макс сумма 5000
+### сумма положительная
+### нельзя депозитить в чужой или несуществующий акк
+
+### Перевод денег пользователем
+### Макс сумма 10_000
+### сумма положительная и не превышает баланс отправителя
+### можно переводить между своими аккаунтами и чужими
+
+### Изменение имени пользователя
+### Два слова из букв разделенные пробелом

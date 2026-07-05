@@ -1,0 +1,329 @@
+### Депозит на счет
+//Позитивный кейс: Депозит на свой счет 4999 рублей
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": 4999
+}
+###
+
+//Позитивный кейс: Депозит на свой счет 5000 рублей
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": 5000
+}
+###
+
+//Негативный кейс: Депозит на свой счет 5001 рублей - должен возвращать ошибку
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": 5001
+}
+###
+
+//Негативный кейс: Депозит на свой счет 0 рублей
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": 0
+}
+###
+
+//Негативный кейс: Депозит на свой счет отрицательной суммы
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": -1
+}
+###
+//Негативный кейс: Депозит на свой счет null
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": null
+}
+###
+//Негативный кейс: Депозит на свой счет числа обернутого в строку
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": "100"
+}
+###
+
+//Негативный кейс: Депозит на чужой счет
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 3,
+  "balance": 500
+}
+###
+
+//Негативный кейс: Депозит на несуществующий счет
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 9999999999,
+  "balance": 500
+}
+
+### Перевод денег пользователем
+//Позитивный кейс: Перевод между своими счетами
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 9999
+}
+###
+
+//Позитивный кейс: Перевод между своими счетами
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 10000
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма больше 10_000
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 10001
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма null
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": null
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма обернута в строку
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": "100"
+}
+###
+
+//Позитивный кейс: Перевод на чужой счет (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": 9999
+}
+###
+
+//Позитивный кейс: Перевод на чужой счет (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": 10000
+}
+###
+
+//Негативный кейс: Перевод на чужой счет суммы больше 10_000 (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": 10000
+}
+###
+
+//Негативный кейс: Перевод суммы превыщающей баланс (AccountId = 4, Id.balance = 0)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 4,
+  "receiverAccountId": 2,
+  "amount": 100
+}
+###
+
+//Негативный кейс: Перевод отрицательной суммы между своими
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": -1
+}
+###
+
+//Негативный кейс: Перевод отрицательной суммы другому пользователю (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": -1
+}
+
+### Изменение имени пользователя
+//Позитивный кейс: Смена имени на два слова разделенные пробелом
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay Sysoev"
+}
+###
+
+//Негативный кейс: Смена имени на одно слово
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay"
+}
+
+###
+//Негативный кейс: Имя более 2х слов
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay Nikolay Nikolay"
+}
+###
+
+//Негативный кейс: Имя пустое
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": ""
+}
+###
+//Негативный кейс: Имя null
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": null
+}
+###
+
+//Негативный кейс: Смена имени содержит цифры в имени
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay123 Sysoev"
+}
+
+###
+
+//Негативный кейс: Смена имени содержит цифры в фамилии
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay Sysoev123"
+}
+###
+
+//Негативный кейс: Смена имени содержит символы в имени
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay^&*(! Sysoev"
+}
+
+###
+
+//Негативный кейс: Смена имени содержит символы в фамилии
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "Nikolay Sysoev^&*(!"
+}
+###
+
+//Негативный кейс: Имя из цифр и символов
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "name": "12312 ^&*(!"
+}
