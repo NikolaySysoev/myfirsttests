@@ -152,13 +152,13 @@ public class TransferTests {
     @Test
     public void userCanNotTransferWhenAmountMoreThanBalance() {
         //на 4м аккаунте баланс = 0
-        String requestBody = String.format("""
+        String requestBody = """
                 {
                   "senderAccountId": 4,
                   "receiverAccountId": 1,
                   "amount": 100
                 }
-                """);
+                """;
 
         given()
                 .contentType(ContentType.JSON)
