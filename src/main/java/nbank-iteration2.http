@@ -1,12 +1,12 @@
 ### Депозит на счет
-//Позитивный кейс: Депозит на свой счет 4999 рублей
+//Позитивный кейс: Депозит на свой счет 4999.99 рублей
 POST http://localhost:4111/api/v1/accounts/deposit
 Content-Type: application/json
 Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 
 {
   "id": 1,
-  "balance": 4999
+  "balance": 4999.99
 }
 ###
 
@@ -21,14 +21,25 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 }
 ###
 
-//Негативный кейс: Депозит на свой счет 5001 рублей - должен возвращать ошибку
+//Позитивный кейс: Депозит на свой счет 0.01 рублей
 POST http://localhost:4111/api/v1/accounts/deposit
 Content-Type: application/json
 Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 
 {
   "id": 1,
-  "balance": 5001
+  "balance": 0.01
+}
+###
+
+//Негативный кейс: Депозит на свой счет 5000.01 рублей - должен возвращать ошибку
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "id": 1,
+  "balance": 5000.01
 }
 ###
 
@@ -50,7 +61,7 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 
 {
   "id": 1,
-  "balance": -1
+  "balance": -0.01
 }
 ###
 //Негативный кейс: Депозит на свой счет null
@@ -104,7 +115,7 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 {
   "senderAccountId": 1,
   "receiverAccountId": 2,
-  "amount": 9999
+  "amount": 9999.99
 }
 ###
 
@@ -120,7 +131,7 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 }
 ###
 
-//Негативный кейс: Перевод между своими счетами, сумма больше 10_000
+//Позитивный кейс: Перевод между своими счетами
 POST http://localhost:4111/api/v1/accounts/transfer
 Content-Type: application/json
 Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
@@ -128,7 +139,43 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 {
   "senderAccountId": 1,
   "receiverAccountId": 2,
-  "amount": 10001
+  "amount": 0.01
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма больше 10_000.01
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 10000.01
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма 0
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": 0
+}
+###
+
+//Негативный кейс: Перевод между своими счетами, сумма -0.01
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 2,
+  "amount": -0.01
 }
 ###
 
@@ -164,7 +211,7 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 {
   "senderAccountId": 1,
   "receiverAccountId": 3,
-  "amount": 9999
+  "amount": 9999.99
 }
 ###
 
@@ -180,6 +227,42 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 }
 ###
 
+//Позитивный кейс: Перевод на чужой счет суммы 0.01
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": 0.01
+}
+###
+
+//Негативный кейс: Перевод на чужой счет 0 (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": 0
+}
+###
+
+//Негативный кейс: Перевод на чужой счет -0.01 (AccoundId = 3 принадлежит пользователю Mary)
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
+
+{
+  "senderAccountId": 1,
+  "receiverAccountId": 3,
+  "amount": -0.01
+}
+###
+
 //Негативный кейс: Перевод на чужой счет суммы больше 10_000 (AccoundId = 3 принадлежит пользователю Mary)
 POST http://localhost:4111/api/v1/accounts/transfer
 Content-Type: application/json
@@ -188,7 +271,7 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
 {
   "senderAccountId": 1,
   "receiverAccountId": 3,
-  "amount": 10000
+  "amount": 10000.01
 }
 ###
 
@@ -201,30 +284,6 @@ Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
   "senderAccountId": 4,
   "receiverAccountId": 2,
   "amount": 100
-}
-###
-
-//Негативный кейс: Перевод отрицательной суммы между своими
-POST http://localhost:4111/api/v1/accounts/transfer
-Content-Type: application/json
-Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
-
-{
-  "senderAccountId": 1,
-  "receiverAccountId": 2,
-  "amount": -1
-}
-###
-
-//Негативный кейс: Перевод отрицательной суммы другому пользователю (AccoundId = 3 принадлежит пользователю Mary)
-POST http://localhost:4111/api/v1/accounts/transfer
-Content-Type: application/json
-Authorization: Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk
-
-{
-  "senderAccountId": 1,
-  "receiverAccountId": 3,
-  "amount": -1
 }
 
 ### Изменение имени пользователя
