@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferTests {
 
@@ -28,21 +29,33 @@ public class TransferTests {
 
     public static Stream<Arguments> validAmount() {
         return Stream.of(
-                Arguments.of(9_999),
+                Arguments.of(9_999.99),
+                Arguments.of(0.01),
                 Arguments.of(10_000));
     }
 
     public static Stream<Arguments> invalidAmount() {
         return Stream.of(
-                Arguments.of(10_001, HttpStatus.SC_BAD_REQUEST),
-                Arguments.of(-1, HttpStatus.SC_BAD_REQUEST),
+                Arguments.of(10_000.01, HttpStatus.SC_BAD_REQUEST),
+                Arguments.of(0, HttpStatus.SC_BAD_REQUEST),
+                Arguments.of(-0.01, HttpStatus.SC_BAD_REQUEST),
                 Arguments.of("500", HttpStatus.SC_INTERNAL_SERVER_ERROR),
                 Arguments.of(null, HttpStatus.SC_INTERNAL_SERVER_ERROR));
     }
 
     @ParameterizedTest
     @MethodSource("validAmount")
-    public void userCanTransferBetweenOwnAccounts(int amount) {
+    public void userCanTransferBetweenOwnAccounts(double amount) {
+        Float initialBalance = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC2' }.balance");
+
         String requestBody = String.format("""
                 {
                   "senderAccountId": 1,
@@ -54,17 +67,39 @@ public class TransferTests {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/transfer")
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        Float balanceAfterTransfer = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC2' }.balance");
+
+        assertEquals(initialBalance + amount, balanceAfterTransfer, 0.01);
     }
 
     @ParameterizedTest
     @MethodSource("invalidAmount")
     public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(Object amount, int statusCode) {
+        Float initialBalance = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC2' }.balance");
+
         //блок IF для преведения числа 100 из 3го кейса к строке.
         //без него строковое значение собиралось как число
         String amountValue;
@@ -86,18 +121,40 @@ public class TransferTests {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/transfer")
                 .then()
                 .assertThat()
                 .statusCode(statusCode);
+
+        Float balanceAfterTransfer = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC2' }.balance");
+
+        assertEquals(initialBalance, balanceAfterTransfer, 0.01);
     }
 
 
     @ParameterizedTest
     @MethodSource("validAmount")
-    public void userCanTransferOnOtherUserAccount(Object amount) {
+    public void userCanTransferOnOtherUserAccount(double amount) {
+        Float initialBalance = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic TWFyeTpNYXJ5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC3' }.balance");
+
         String requestBody = String.format("""
                 {
                   "senderAccountId": 1,
@@ -109,17 +166,39 @@ public class TransferTests {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/transfer")
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        Float balanceAfterTransfer = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic TWFyeTpNYXJ5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC3' }.balance");
+
+        assertEquals(initialBalance + amount, balanceAfterTransfer, 0.01);
     }
 
     @ParameterizedTest
     @MethodSource("invalidAmount")
     public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(Object amount, int statusCode) {
+        Float initialBalance = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic TWFyeTpNYXJ5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC3' }.balance");
+
         //блок IF для преведения числа 100 из 3го кейса к строке.
         //без него строковое значение собиралось как число
         String amountValue;
@@ -141,16 +220,38 @@ public class TransferTests {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/transfer")
                 .then()
                 .assertThat()
                 .statusCode(statusCode);
+
+        Float balanceAfterTransfer = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic TWFyeTpNYXJ5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC3' }.balance");
+
+        assertEquals(initialBalance, balanceAfterTransfer, 0.01);
     }
 
     @Test
     public void userCanNotTransferWhenAmountMoreThanBalance() {
+        Float initialBalance = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC1' } .balance");
+
         //на 4м аккаунте баланс = 0
         String requestBody = """
                 {
@@ -163,12 +264,24 @@ public class TransferTests {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/transfer")
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        Float balanceAfterTransfer = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/accounts")
+                .then()
+                .extract()
+                .body()
+                .path("find { it.accountNumber == 'ACC1' }.balance");
+
+        assertEquals(initialBalance, balanceAfterTransfer, 0.01);
     }
 
 }

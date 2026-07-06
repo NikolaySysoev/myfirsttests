@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class UpdateProfileNameTest {
 
@@ -50,17 +51,39 @@ public class UpdateProfileNameTest {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .put("http://localhost:4111/api/v1/customer/profile")
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        String nameAfterChange = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .extract()
+                .body()
+                .path("name");
+
+        assertEquals("Nikolay Sysoev", nameAfterChange);
     }
 
     @ParameterizedTest
     @MethodSource("invalidName")
     public void UserCanNotChangeNameWhenInvalidData(Object name, int statusCode){
+        String initialName = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .extract()
+                .body()
+                .path("name");
+
         String requestBody = String.format("""
                 {
                    "name": "%s"
@@ -70,11 +93,23 @@ public class UpdateProfileNameTest {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3JkJA==")
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
                 .body(requestBody)
                 .put("http://localhost:4111/api/v1/customer/profile")
                 .then()
                 .assertThat()
                 .statusCode(statusCode);
+
+        String NameAfterChange = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .get("http://localhost:4111/api/v1/customer/profile")
+                .then()
+                .extract()
+                .body()
+                .path("name");
+
+        assertEquals(initialName, NameAfterChange);
     }
 }
