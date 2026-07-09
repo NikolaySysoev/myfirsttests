@@ -106,7 +106,6 @@ public class DepositTest {
                 .body(requestBody)
                 .post("http://localhost:4111/api/v1/accounts/deposit")
                 .then()
-                .assertThat()
                 .statusCode(HttpStatus.SC_OK);
 
         //делаем гет запрос и вытаскиваем текущий баланс
