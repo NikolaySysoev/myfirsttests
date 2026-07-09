@@ -4,6 +4,7 @@ import io.restassured.RestAssured;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -37,11 +39,37 @@ public class UpdateProfileNameTest {
                 Arguments.of("Nikolay^&*(! Sysoev", HttpStatus.SC_BAD_REQUEST),
                 Arguments.of("Nikolay Sysoev^&*(!", HttpStatus.SC_BAD_REQUEST),
                 Arguments.of("12312 ^&*(!", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of(null, HttpStatus.SC_INTERNAL_SERVER_ERROR));
+                Arguments.of(null, HttpStatus.SC_BAD_REQUEST));
     }
 
     @Test
     public void userCanChangeNameWhenValidData() {
+        //создаем пользователя от лица админа
+        //генерация рандомного имени длиной 8 символов
+        String userName = UUID.randomUUID().toString().substring(0,8);
+
+        String createUserBody = String.format("""
+                {
+                            "username": "%s",
+                                "password": "verysTRongPassword33$",
+                                "role": "USER"
+                        }
+                """, userName);
+
+        //создаем пользователя и тащим токен
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body(createUserBody)
+                .post("http://localhost:4111/api/v1/admin/users")
+                .then()
+                .statusCode(HttpStatus.SC_CREATED)
+                .extract()
+                .response();
+
+        String userAuthToken = response.header("Authorization");
+
         String requestBody = """
                 {
                    "name": "Nikolay Sysoev"
@@ -51,7 +79,7 @@ public class UpdateProfileNameTest {
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .header("Authorization", userAuthToken)
                 .body(requestBody)
                 .put("http://localhost:4111/api/v1/customer/profile")
                 .then()
@@ -61,7 +89,7 @@ public class UpdateProfileNameTest {
         String nameAfterChange = given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .header("Authorization", userAuthToken)
                 .get("http://localhost:4111/api/v1/customer/profile")
                 .then()
                 .extract()
@@ -73,37 +101,53 @@ public class UpdateProfileNameTest {
 
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void UserCanNotChangeNameWhenInvalidData(Object name, int statusCode){
-        String initialName = given()
+    public void UserCanNotChangeNameWhenInvalidData(Object givenName, int statusCode){
+        //создаем пользователя от лица админа
+        //генерация рандомного имени длиной 8 символов
+        String userName = UUID.randomUUID().toString().substring(0,8);
+
+        String createUserBody = String.format("""
+                {
+                            "username": "%s",
+                                "password": "verysTRongPassword33$",
+                                "role": "USER"
+                        }
+                """, userName);
+
+        //создаем пользователя и тащим токен
+        Response response = given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
-                .get("http://localhost:4111/api/v1/customer/profile")
+                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .body(createUserBody)
+                .post("http://localhost:4111/api/v1/admin/users")
                 .then()
+                .statusCode(HttpStatus.SC_CREATED)
                 .extract()
-                .body()
-                .path("name");
+                .response();
+
+        String userAuthToken = response.header("Authorization");
+        String initialName = response.path("name");
 
         String requestBody = String.format("""
                 {
                    "name": "%s"
                  }
-                """, name);
+                """, givenName);
 
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .header("Authorization", userAuthToken)
                 .body(requestBody)
                 .put("http://localhost:4111/api/v1/customer/profile")
                 .then()
-                .assertThat()
                 .statusCode(statusCode);
 
         String NameAfterChange = given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
-                .header("Authorization", "Basic Tmlrb2xheTpOaWtvbGF5MTIzJFBhc3N3b3Jk")
+                .header("Authorization", userAuthToken)
                 .get("http://localhost:4111/api/v1/customer/profile")
                 .then()
                 .extract()
