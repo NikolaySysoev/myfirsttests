@@ -1,17 +1,24 @@
 package iteration2;
 
-import io.restassured.RestAssured;
+import generators.RandomData;
 import io.restassured.http.ContentType;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
+import models.CreateUserRequest;
+import models.DepositMoneyUserRequest;
+import models.UserRole;
 import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.AdminCreateUserRequester;
+import requests.UserCreateAccountRequester;
+import requests.UserDepositMoneyRequester;
+import requests.UserGetAccountsRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -19,19 +26,11 @@ import static io.restassured.RestAssured.given;
 
 public class DepositTest {
 
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(
-                        new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
-    }
-
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
-                Arguments.of(4999.99),
-                Arguments.of(0.01),
-                Arguments.of(5000.00));
+                Arguments.of(new BigDecimal("4999.99")),
+                Arguments.of(new BigDecimal("0.01")),
+                Arguments.of(new BigDecimal("5000.00")));
     }
 
     public static Stream<Arguments> depositInvalidData() {
@@ -51,77 +50,72 @@ public class DepositTest {
 
     @ParameterizedTest
     @MethodSource("depositValidData")
-    public void userCanDepositOnHisAccount(double balance) {
-        //создаем пользователя от лица админа
-        //генерация рандомного имени длиной 8 символов
-        String userName = UUID.randomUUID().toString().substring(0,8);
+    public void userCanDepositOnHisAccount(BigDecimal balance) {
+        //создание
+        CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                .username(RandomData.getUserName())
+                .password(RandomData.getUserPassword())
+                .role(UserRole.USER.toString())
+                .build();
 
-        String createUserBody = String.format("""
-                {
-                            "username": "%s",
-                                "password": "verysTRongPassword33$",
-                                "role": "USER"
-                        }
-                """, userName);
-
-        //создаем пользователя и тащим токен
-        String userAuthToken = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body(createUserBody)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .statusCode(HttpStatus.SC_CREATED)
+        //создание нового пользователя с админской учетки и сохранение его токена
+        String userAuthToken = new AdminCreateUserRequester(
+                //админ реквест спека - хэддеры запроса + фильтры(для консоли) + бейс uri
+                RequestSpecs.adminSpec(),
+                //респонс спека - проверяет что статус ответа 201
+                ResponseSpecs.entityWasCreated()
+        )
+                //пост запрос вызывается у класса AdminCreateUserRequest
+                //берем объект созданный выше и прокидывает его в запрос
+                //объект тут = model в аргументе запроса в методе класса. Тут юзернейм, пароль и роль.
+                .post(createUserRequest)
                 .extract()
-                .header("Authorization");
+                .header("authorization");
 
-        //создаем счет от лица пользователя и вытаскиваем его айди
-        Integer userAccountId = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .statusCode(HttpStatus.SC_CREATED)
+        //создание аккаунта от лица пользователя, которого создали на прошлом шаге
+        Integer accountId = new UserCreateAccountRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.entityWasCreated()
+        )
+                .post()
                 .extract()
                 .body()
                 .path("id");
 
-        float initialBalance = 0.00f;
+        //стартовый баланс пользователя
+        BigDecimal initialBalance = new BigDecimal("0.00");
 
-        //создаем тело для пост запроса на пополнение баланса
-        String requestBody = String.format("""
-                {
-                    "id": %s,
-                        "balance": %s
-                }
-                """,userAccountId, balance);
+        //создаем объект запроса на депозит
+        DepositMoneyUserRequest depositMoneyUserRequest = DepositMoneyUserRequest.builder()
+                .id(accountId)
+                .balance(balance)
+                .build();
 
-        //делаем запрос на депозит
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .body(requestBody)
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .statusCode(HttpStatus.SC_OK);
+        //делаем пост запрос на депозит
+        new UserDepositMoneyRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .post(depositMoneyUserRequest);
 
-        //делаем гет запрос и вытаскиваем текущий баланс
-        Float balanceAfterDeposit = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .statusCode(HttpStatus.SC_OK)
+        //делаем гет запрос на проверку изменения данных
+        String balanceAfterDepositRaw = new UserGetAccountsRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
                 .extract()
                 .body()
-                .path("[0].balance");
+                .path("[0].balance").toString();
 
-        //сравниваем стартовый баланс (0) и текущий с погрешностью в 1 копейку
-        assertEquals(initialBalance + balance, balanceAfterDeposit, 0.01);
+        BigDecimal balanceAfterDeposit = new BigDecimal(balanceAfterDepositRaw);
+        BigDecimal expectedBalance = initialBalance.add(balance);
+
+        //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
+        // если ожидаемый и после депозита равны -> компаратор вернет 0
+        // если ожидаемый < депозита -> компаратор вернет отр. число
+        // если ожидаемый > депозита -> компаратор вернет положит. число
+        assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
     }
 
     @ParameterizedTest
