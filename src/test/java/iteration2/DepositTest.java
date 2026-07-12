@@ -2,9 +2,7 @@ package iteration2;
 
 import generators.RandomData;
 import io.restassured.http.ContentType;
-import models.CreateUserRequest;
-import models.DepositMoneyUserRequest;
-import models.UserRole;
+import models.*;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -73,14 +71,16 @@ public class DepositTest {
                 .header("authorization");
 
         //создание аккаунта от лица пользователя, которого создали на прошлом шаге
-        Integer accountId = new UserCreateAccountRequester(
+        CreateAccountUserResponse accountResponse = new UserCreateAccountRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
                 .post()
                 .extract()
                 .body()
-                .path("id");
+                .as(CreateAccountUserResponse.class);
+
+        Long accountId = accountResponse.getId();
 
         //стартовый баланс пользователя
         BigDecimal initialBalance = new BigDecimal("0.00");
@@ -99,16 +99,16 @@ public class DepositTest {
                 .post(depositMoneyUserRequest);
 
         //делаем гет запрос на проверку изменения данных
-        String balanceAfterDepositRaw = new UserGetAccountsRequester(
+        GetUserAccountsResponse[] accounts = new UserGetAccountsRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsOK()
         )
                 .get()
                 .extract()
                 .body()
-                .path("[0].balance").toString();
+                .as(GetUserAccountsResponse[].class);
 
-        BigDecimal balanceAfterDeposit = new BigDecimal(balanceAfterDepositRaw);
+        BigDecimal balanceAfterDeposit = accounts[0].getBalance();
         BigDecimal expectedBalance = initialBalance.add(balance);
 
         //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
