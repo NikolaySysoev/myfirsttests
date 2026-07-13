@@ -75,7 +75,7 @@ public class DepositTest {
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post()
+                .post(null)
                 .extract()
                 .body()
                 .as(CreateAccountUserResponse.class);
