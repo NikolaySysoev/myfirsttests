@@ -5,7 +5,7 @@ import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import models.BaseModel;
 
-public abstract class Request <T extends BaseModel> {
+public abstract class Request<T extends BaseModel> {
     protected RequestSpecification requestSpecification;
     protected ResponseSpecification responseSpecification;
 
@@ -17,8 +17,5 @@ public abstract class Request <T extends BaseModel> {
     public abstract ValidatableResponse post(T model);
 
     public abstract ValidatableResponse get();
-
-    public ValidatableResponse post(){
-        return post(null);
-    }
 }
+

@@ -7,7 +7,7 @@ import models.CreateAccountUserRequest;
 
 import static io.restassured.RestAssured.given;
 
-public class UserCreateAccountRequester extends  Request<CreateAccountUserRequest>{
+public class UserCreateAccountRequester extends Request<CreateAccountUserRequest> {
 
     public UserCreateAccountRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
@@ -15,13 +15,8 @@ public class UserCreateAccountRequester extends  Request<CreateAccountUserReques
 
     @Override
     public ValidatableResponse post(CreateAccountUserRequest model) {
-        RequestSpecification spec = given().spec(requestSpecification);
-
-        if (model != null) {
-            spec = spec.body(model);
-        }
-
-        return spec
+        return given().
+                spec(requestSpecification)
                 .post("/api/v1/accounts")
                 .then()
                 .assertThat()
