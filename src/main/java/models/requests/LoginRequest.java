@@ -1,15 +1,16 @@
-package models;
+package models.requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import models.BaseModel;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class LoginUserResponse {
+public class LoginRequest extends BaseModel {
     private String username;
-    private String role;
+    private String password;
 }

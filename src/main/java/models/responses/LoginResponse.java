@@ -1,4 +1,4 @@
-package models;
+package models.responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class LoginUserRequest extends BaseModel{
+public class LoginResponse {
     private String username;
-    private String password;
+    private String role;
 }

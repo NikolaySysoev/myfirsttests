@@ -5,7 +5,8 @@ import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import requests.UserLoginRequester;
+import models.requests.LoginRequest;
+import requests.LoginRequester;
 
 import java.util.List;
 
@@ -35,11 +36,11 @@ public class RequestSpecs {
     }
 
     public static RequestSpecification authAsUser(String username, String password) {
-        String userAuthHeader = new UserLoginRequester(
+        String userAuthHeader = new LoginRequester(
                 RequestSpecs.unAuthSpec(),
                 ResponseSpecs.requestReturnsOK()
         )
-                .post(models.LoginUserRequest.builder().username(username).password(password).build())
+                .post(LoginRequest.builder().username(username).password(password).build())
                 .extract()
                 .header("authorization");
 

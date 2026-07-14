@@ -3,18 +3,18 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.CreateAccountUserRequest;
+import models.requests.CreateAccountRequest;
 
 import static io.restassured.RestAssured.given;
 
-public class UserCreateAccountRequester extends Request<CreateAccountUserRequest> {
+public class CreateAccountRequester extends Request<CreateAccountRequest> {
 
-    public UserCreateAccountRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+    public CreateAccountRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
     @Override
-    public ValidatableResponse post(CreateAccountUserRequest model) {
+    public ValidatableResponse post(CreateAccountRequest model) {
         return given().
                 spec(requestSpecification)
                 .post("/api/v1/accounts")

@@ -1,4 +1,4 @@
-package models;
+package models.responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class CreateAccountUserResponse extends BaseModel {
+public class DepositMoneyResponse {
     private long id;
     private String accountNumber;
     private BigDecimal balance;
