@@ -29,8 +29,6 @@ public class TransferTests extends BaseTest {
     private String userAuthToken;
     private long firstAccountId;
     private long secondAccountId;
-    private BigDecimal firstAccountInitialBalance;
-    private BigDecimal secondAccountInitialBalance;
     private BigDecimal firstAccountBalanceAfterDeposit;
     private BigDecimal secondAccountBalanceAfterDeposit;
 
@@ -461,7 +459,7 @@ public class TransferTests extends BaseTest {
                 .findFirst()
                 .orElseThrow();
 
-        BigDecimal expectedBalance = secondAccountInitialBalance;
+        BigDecimal expectedBalance = secondAccountBalanceAfterDeposit;
 
         //проверяем баланс 2 счета
         assertEquals(0, expectedBalance.compareTo(secondAccountBalanceAfterTransfer));
