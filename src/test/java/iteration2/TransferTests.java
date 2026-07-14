@@ -351,7 +351,8 @@ public class TransferTests extends BaseTest {
                 .extract()
                 .header("authorization");
 
-        CreateAccountResponse accountResponse = new CreateAccountRequester(
+        //создаем счет второму пользователю
+        CreateAccountResponse secondUserAccountResponse = new CreateAccountRequester(
                 RequestSpecs.authAsUser(secondUserAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
@@ -360,7 +361,8 @@ public class TransferTests extends BaseTest {
                 .body()
                 .as(CreateAccountResponse.class);
 
-        long secondUserAccountId = accountResponse.getId();
+        long secondUserAccountId = secondUserAccountResponse.getId();
+        BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
 
         var transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(firstAccountId)
@@ -374,8 +376,19 @@ public class TransferTests extends BaseTest {
         )
                 .post(transferMoneyRequest);
 
-        //получаем счета 2го пользователя
-        var userAccounts = new GetAccountsRequester(
+    //получаем счета 1 пользователя
+        var firstUserAccountsResponse = new GetAccountsRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
+                .extract()
+                .body()
+                .as(GetUserAccountsResponse[].class);
+
+
+        //получаем счета 2 пользователя
+        var secondUserAccountsResponse = new GetAccountsRequester(
                 RequestSpecs.authAsUser(secondUserAuthToken),
                 ResponseSpecs.requestReturnsOK()
         )
@@ -384,17 +397,31 @@ public class TransferTests extends BaseTest {
                 .body()
                 .as(GetUserAccountsResponse[].class);
 
+
+        //вытаскиваем баланс со счета 1го пользователя
+        BigDecimal firstAccountBalanceAfterTransfer = Arrays.stream(firstUserAccountsResponse)
+                .filter(acc -> acc.getId() == firstAccountId)
+                .map(acc -> acc.getBalance())
+                .findFirst()
+                .orElseThrow();
+
         //вытаскиваем баланс со счета 2го пользователя
-        BigDecimal secondAccountBalanceAfterTransfer = Arrays.stream(userAccounts)
+        BigDecimal secondAccountBalanceAfterTransfer = Arrays.stream(secondUserAccountsResponse)
                 .filter(acc -> acc.getId() == secondUserAccountId)
                 .map(acc -> acc.getBalance())
                 .findFirst()
                 .orElseThrow();
 
-        BigDecimal expectedBalance = secondAccountInitialBalance;
+        //ожидаем что баланс счета 1 пользователя не изменился
+        BigDecimal firstAccountExpectedBalance = firstAccountBalanceAfterDeposit;
 
+        //ожидаем что баланс счета 1 пользователя не изменился
+        BigDecimal secondAccountExpectedBalance = secondAccountInitialBalance;
+
+        //првоеряем баланс 1 счета
+        assertEquals(0, firstAccountExpectedBalance.compareTo(firstAccountBalanceAfterTransfer));
         //проверяем баланс 2 счета
-        assertEquals(0, expectedBalance.compareTo(secondAccountBalanceAfterTransfer));
+        assertEquals(0, secondAccountExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
     }
 
     @ParameterizedTest
