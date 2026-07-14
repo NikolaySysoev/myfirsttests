@@ -3,18 +3,18 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.LoginUserRequest;
+import models.requests.LoginRequest;
 
 import static io.restassured.RestAssured.given;
 
-public class UserLoginRequester extends Request<LoginUserRequest> {
+public class LoginRequester extends Request<LoginRequest> {
 
-    public UserLoginRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+    public LoginRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
     @Override
-    public ValidatableResponse post(LoginUserRequest model) {
+    public ValidatableResponse post(LoginRequest model) {
         return given()
                 .spec(requestSpecification)
                 .body(model)

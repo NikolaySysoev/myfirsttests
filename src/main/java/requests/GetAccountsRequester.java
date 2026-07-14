@@ -3,12 +3,12 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.GetUserAccountsRequest;
+import models.requests.GetUserAccountsRequest;
 
 import static io.restassured.RestAssured.given;
 
-public class UserGetAccountsRequester extends Request<GetUserAccountsRequest> {
-    public UserGetAccountsRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+public class GetAccountsRequester extends Request<GetUserAccountsRequest> {
+    public GetAccountsRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 

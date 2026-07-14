@@ -1,9 +1,10 @@
-package models;
+package models.requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import models.BaseModel;
 
 import java.math.BigDecimal;
 
@@ -11,7 +12,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class DepositMoneyUserRequest extends BaseModel {
-    private long id;
-    private BigDecimal balance;
+public class TransferMoneyRequest extends BaseModel {
+    long senderAccountId;
+    long receiverAccountId;
+    BigDecimal amount;
 }

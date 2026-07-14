@@ -1,24 +1,25 @@
 package iteration2;
 
 import generators.RandomData;
-import io.restassured.http.ContentType;
 import models.*;
-import org.apache.http.HttpStatus;
+import models.requests.CreateUserRequest;
+import models.requests.DepositMoneyRequest;
+import models.responses.CreateAccountResponse;
+import models.responses.GetUserAccountsResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.AdminCreateUserRequester;
-import requests.UserCreateAccountRequester;
-import requests.UserDepositMoneyRequester;
-import requests.UserGetAccountsRequester;
+import requests.CreateAccountRequester;
+import requests.DepositMoneyRequester;
+import requests.GetAccountsRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -74,14 +75,14 @@ public class DepositTest {
                 .header("authorization");
 
         //создание аккаунта от лица пользователя, которого создали на прошлом шаге
-        CreateAccountUserResponse accountResponse = new UserCreateAccountRequester(
+        CreateAccountResponse accountResponse = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
                 .post(null)
                 .extract()
                 .body()
-                .as(CreateAccountUserResponse.class);
+                .as(CreateAccountResponse.class);
 
         Long accountId = accountResponse.getId();
 
@@ -89,20 +90,20 @@ public class DepositTest {
         BigDecimal initialBalance = new BigDecimal("0.00");
 
         //создаем объект запроса на депозит
-        DepositMoneyUserRequest depositMoneyUserRequest = DepositMoneyUserRequest.builder()
+        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
                 .balance(balance)
                 .build();
 
         //делаем пост запрос на депозит
-        new UserDepositMoneyRequester(
+        new DepositMoneyRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsOK()
         )
-                .post(depositMoneyUserRequest);
+                .post(depositMoneyRequest);
 
         //делаем гет запрос на проверку изменения данных
-        GetUserAccountsResponse[] accounts = new UserGetAccountsRequester(
+        GetUserAccountsResponse[] accounts = new GetAccountsRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsOK()
         )
@@ -140,29 +141,29 @@ public class DepositTest {
                 .extract()
                 .header("authorization");
 
-        CreateAccountUserResponse accountResponse = new UserCreateAccountRequester(
+        CreateAccountResponse accountResponse = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
                 .post(null)
                 .extract()
                 .body()
-                .as(CreateAccountUserResponse.class);
+                .as(CreateAccountResponse.class);
 
         Long accountId = accountResponse.getId();
 
-        DepositMoneyUserRequest depositMoneyUserRequest = DepositMoneyUserRequest.builder()
+        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
                 .balance(balance)
                 .build();
 
-        new UserDepositMoneyRequester(
+        new DepositMoneyRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
-                .post(depositMoneyUserRequest);
+                .post(depositMoneyRequest);
 
-        GetUserAccountsResponse[] accounts = new UserGetAccountsRequester(
+        GetUserAccountsResponse[] accounts = new GetAccountsRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsOK()
         )
@@ -205,16 +206,16 @@ public class DepositTest {
 
 
         //создаем объект запроса на депозит
-        DepositMoneyUserRequest depositMoneyUserRequest = DepositMoneyUserRequest.builder()
+        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
                 .balance(new BigDecimal("100"))
                 .build();
 
         //делаем пост запрос на депозит
-        new UserDepositMoneyRequester(
+        new DepositMoneyRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsForbidden(errorValue)
         )
-                .post(depositMoneyUserRequest);
+                .post(depositMoneyRequest);
     }
 }
