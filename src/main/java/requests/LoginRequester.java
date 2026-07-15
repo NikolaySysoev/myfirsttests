@@ -25,6 +25,12 @@ public class LoginRequester extends Request<LoginRequest> {
     }
 
     @Override
+    public ValidatableResponse put(LoginRequest model) {
+        return null;
+        //TODO
+    }
+
+    @Override
     public ValidatableResponse get() {
         return null;
         //TODO

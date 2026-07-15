@@ -3,32 +3,29 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.requests.DepositMoneyRequest;
+import models.requests.ChangeNameRequest;
 
 import static io.restassured.RestAssured.given;
 
-
-public class DepositMoneyRequester extends  Request<DepositMoneyRequest> {
-
-
-    public DepositMoneyRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+public class ChangeNameRequester extends Request<ChangeNameRequest> {
+    public ChangeNameRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
     @Override
-    public ValidatableResponse post(DepositMoneyRequest model) {
-        return  given()
-                .spec(requestSpecification)
-                .body(model)
-                .post("/api/v1/accounts/deposit")
-                .then()
-                .spec(responseSpecification);
+    public ValidatableResponse post(ChangeNameRequest model) {
+        return null;
+        //TODO
     }
 
     @Override
-    public ValidatableResponse put(DepositMoneyRequest model) {
-        return null;
-        //TODO
+    public ValidatableResponse put(ChangeNameRequest model) {
+        return given()
+                .spec(requestSpecification)
+                .body(model)
+                .put("/api/v1/customer/profile")
+                .then()
+                .spec(responseSpecification);
     }
 
     @Override

@@ -27,10 +27,10 @@ public class TransferTests extends BaseTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
 
     private String userAuthToken;
-    private long firstAccountId;
-    private long secondAccountId;
-    private BigDecimal firstAccountBalanceAfterDeposit;
-    private BigDecimal secondAccountBalanceAfterDeposit;
+    private long senderAccountId;
+    private long receiverAccountId;
+    private BigDecimal senderAccountBalanceAfterSetup;
+    private BigDecimal receiverAccountBalanceAfterSetup;
 
     //хэлпер для получения баланса пользователя
     private BigDecimal getAccountBalance(GetUserAccountsResponse[] accounts, long accountId) {
@@ -81,12 +81,12 @@ public class TransferTests extends BaseTest {
                 .as(CreateAccountResponse.class);
 
         //вытаскиваем айдишки счетов
-        firstAccountId = firstAccountResponse.getId();
-        secondAccountId = secondAccountResponse.getId();
+        senderAccountId = firstAccountResponse.getId();
+        receiverAccountId = secondAccountResponse.getId();
 
         //готовим данные для пополнения счета
-        var depositMoneyUserRequest = DepositMoneyRequest.builder()
-                .id(firstAccountId)
+        var depositMoneyRequest = DepositMoneyRequest.builder()
+                .id(senderAccountId)
                 .balance(DEFAULT_DEPOSIT)
                 .build();
 
@@ -96,7 +96,7 @@ public class TransferTests extends BaseTest {
                     RequestSpecs.authAsUser(userAuthToken),
                     ResponseSpecs.requestReturnsOK()
             )
-                    .post(depositMoneyUserRequest)
+                    .post(depositMoneyRequest)
                     .extract()
                     .body()
                     .as(DepositMoneyResponse.class);
@@ -113,10 +113,10 @@ public class TransferTests extends BaseTest {
                 .as(GetUserAccountsResponse[].class);
 
         //вытаскиваем баланс с первого счета
-        firstAccountBalanceAfterDeposit = getAccountBalance(userAccounts, firstAccountId);
+        senderAccountBalanceAfterSetup = getAccountBalance(userAccounts, senderAccountId);
 
         //вытаскиваем баланс со второго счета
-        secondAccountBalanceAfterDeposit = getAccountBalance(userAccounts, secondAccountId);
+        receiverAccountBalanceAfterSetup = getAccountBalance(userAccounts, receiverAccountId);
     }
 
     public static Stream<Arguments> validAmount() {
@@ -140,8 +140,8 @@ public class TransferTests extends BaseTest {
     public void userCanTransferBetweenOwnAccounts(BigDecimal transferAmount) {
         //готовим данные для трансфера
         var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(firstAccountId)
-                .receiverAccountId(secondAccountId)
+                .senderAccountId(senderAccountId)
+                .receiverAccountId(receiverAccountId)
                 .amount(transferAmount)
                 .build();
 
@@ -163,20 +163,20 @@ public class TransferTests extends BaseTest {
                 .as(GetUserAccountsResponse[].class);
 
         //вытаскиваем баланс с первого счета
-        BigDecimal firstAccountBalanceAfterTransfer = getAccountBalance(userAccounts, firstAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
 
         //вытаскиваем баланс со второго счета
-        BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(userAccounts, secondAccountId);
+        BigDecimal receiverAccountBalanceAfterTransfer = getAccountBalance(userAccounts, receiverAccountId);
 
         //ожидаем что на 1 счете теперь балланс стал меньше на сумму трансфера
-        BigDecimal firstAccountExpectedBalance = firstAccountBalanceAfterDeposit.subtract(transferAmount);
+        BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup.subtract(transferAmount);
         //ожидаем что на 2 счете теперь баланс стал больше на сумму трансфера
-        BigDecimal secondAccountExpectedBalance = secondAccountBalanceAfterDeposit.add(transferAmount);
+        BigDecimal receiverAccountExpectedBalance = receiverAccountBalanceAfterSetup.add(transferAmount);
 
         //проверяем баланс 1 счета
-        assertEquals(0, firstAccountExpectedBalance.compareTo(firstAccountBalanceAfterTransfer));
+        assertEquals(0, senderAccountExpectedBalance.compareTo(senderAccountBalanceAfterTransfer));
         //проверяем баланс 2 счета
-        assertEquals(0, secondAccountExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
+        assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
     }
 
     @ParameterizedTest
@@ -184,8 +184,8 @@ public class TransferTests extends BaseTest {
     public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
         //готовим данные для трансфера
         var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(firstAccountId)
-                .receiverAccountId(secondAccountId)
+                .senderAccountId(senderAccountId)
+                .receiverAccountId(receiverAccountId)
                 .amount(transferAmount)
                 .build();
 
@@ -207,19 +207,19 @@ public class TransferTests extends BaseTest {
                 .as(GetUserAccountsResponse[].class);
 
         //вытаскиваем баланс с первого счета
-        BigDecimal firstAccountBalanceAfterTransfer = getAccountBalance(userAccounts, firstAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
 
         //вытаскиваем баланс со второго счета
-        BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(userAccounts, secondAccountId);
+        BigDecimal receiverAccountBalanceAfterTransfer = getAccountBalance(userAccounts, receiverAccountId);
 
         //ожидаем что баланс 1 и 2 счета не изменились
-        BigDecimal firstAccountExpectedBalance = firstAccountBalanceAfterDeposit;
-        BigDecimal secondAccountExpectedBalance = secondAccountBalanceAfterDeposit;
+        BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup;
+        BigDecimal receiverAccountExpectedBalance = receiverAccountBalanceAfterSetup;
 
         //првоеряем баланс 1 счета
-        assertEquals(0, firstAccountExpectedBalance.compareTo(firstAccountBalanceAfterTransfer));
+        assertEquals(0, senderAccountExpectedBalance.compareTo(senderAccountBalanceAfterTransfer));
         //проверяем баланс 2 счета
-        assertEquals(0, secondAccountExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
+        assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
     }
 
     @ParameterizedTest
@@ -243,7 +243,7 @@ public class TransferTests extends BaseTest {
 
 
         //создаем аккаунт второму пользователя
-        CreateAccountResponse secondUserAccountResponse = new CreateAccountRequester(
+        var secondUserAccountResponse = new CreateAccountRequester(
                 RequestSpecs.authAsUser(secondUserAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
@@ -256,7 +256,7 @@ public class TransferTests extends BaseTest {
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
 
         var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(firstAccountId)
+                .senderAccountId(senderAccountId)
                 .receiverAccountId(secondUserAccountId)
                 .amount(transferAmount)
                 .build();
@@ -290,20 +290,20 @@ public class TransferTests extends BaseTest {
 
 
         //вытаскиваем баланс со счета 1го пользователя
-        BigDecimal firstAccountBalanceAfterTransfer = getAccountBalance(userAccounts, firstAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
 
         //вытаскиваем баланс со счета 2го пользователя
         BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(secondUserAccountsResponse, secondUserAccountId);
 
         //ожидаем что на 1 счете теперь балланс стал меньше на сумму трансфера
-        BigDecimal firstAccountExpectedBalance = firstAccountBalanceAfterDeposit.subtract(transferAmount);
+        BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup.subtract(transferAmount);
         //ожидаем что на счете 2го пользователя теперь баланс стал больше на сумму трансфера
-        BigDecimal expectedBalance = secondAccountInitialBalance.add(transferAmount);
+        BigDecimal secondUserExpectedBalance = secondAccountInitialBalance.add(transferAmount);
 
         //проверяем баланс счета 1го пользователя
-        assertEquals(0, firstAccountExpectedBalance.compareTo(firstAccountBalanceAfterTransfer));
+        assertEquals(0, senderAccountExpectedBalance.compareTo(senderAccountBalanceAfterTransfer));
         //проверяем баланс счета 2го пользователя
-        assertEquals(0, expectedBalance.compareTo(secondAccountBalanceAfterTransfer));
+        assertEquals(0, secondUserExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
     }
 
     @ParameterizedTest
@@ -339,7 +339,7 @@ public class TransferTests extends BaseTest {
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
 
         var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(firstAccountId)
+                .senderAccountId(senderAccountId)
                 .receiverAccountId(secondUserAccountId)
                 .amount(transferAmount)
                 .build();
@@ -373,21 +373,21 @@ public class TransferTests extends BaseTest {
 
 
         //вытаскиваем баланс со счета 1го пользователя
-        BigDecimal firstAccountBalanceAfterTransfer = getAccountBalance(userAccounts, firstAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
 
         //вытаскиваем баланс со счета 2го пользователя
         BigDecimal secondUserAccountBalanceAfterTransfer = getAccountBalance(secondUserAccountsResponse, secondUserAccountId);
 
         //ожидаем что баланс счета 1 пользователя не изменился
-        BigDecimal firstAccountExpectedBalance = firstAccountBalanceAfterDeposit;
+        BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup;
 
         //ожидаем что баланс счета 1 пользователя не изменился
-        BigDecimal secondAccountExpectedBalance = secondAccountInitialBalance;
+        BigDecimal secondUserExpectedBalance = secondAccountInitialBalance;
 
         //првоеряем баланс 1 счета
-        assertEquals(0, firstAccountExpectedBalance.compareTo(firstAccountBalanceAfterTransfer));
+        assertEquals(0, senderAccountExpectedBalance.compareTo(senderAccountBalanceAfterTransfer));
         //проверяем баланс 2 счета
-        assertEquals(0, secondAccountExpectedBalance.compareTo(secondUserAccountBalanceAfterTransfer));
+        assertEquals(0, secondUserExpectedBalance.compareTo(secondUserAccountBalanceAfterTransfer));
     }
 
     @ParameterizedTest
@@ -396,9 +396,10 @@ public class TransferTests extends BaseTest {
     })
     public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, String errorValue) {
         //готовим данные для трансфера
+        //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
         var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(secondAccountId)
-                .receiverAccountId(firstAccountId)
+                .senderAccountId(receiverAccountId)
+                .receiverAccountId(senderAccountId)
                 .amount(transferAmount)
                 .build();
 
@@ -421,11 +422,11 @@ public class TransferTests extends BaseTest {
 
 
         //вытаскиваем баланс со второго счета
-        BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(userAccounts, secondAccountId);
+        BigDecimal receiverBalanceAfterTransfer = getAccountBalance(userAccounts, receiverAccountId);
 
-        BigDecimal expectedBalance = secondAccountBalanceAfterDeposit;
+        BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
 
         //проверяем баланс 2 счета
-        assertEquals(0, expectedBalance.compareTo(secondAccountBalanceAfterTransfer));
+        assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
     }
 }
