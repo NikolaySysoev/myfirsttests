@@ -24,6 +24,12 @@ public class CreateAccountRequester extends Request<CreateAccountRequest> {
     }
 
     @Override
+    public ValidatableResponse put(CreateAccountRequest model) {
+        return null;
+        //TODO
+    }
+
+    @Override
     public ValidatableResponse get() {
         return null;
         //TODO

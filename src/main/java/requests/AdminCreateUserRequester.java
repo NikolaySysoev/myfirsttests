@@ -25,6 +25,12 @@ public class AdminCreateUserRequester extends Request<CreateUserRequest> {
     }
 
     @Override
+    public ValidatableResponse put(CreateUserRequest model) {
+        return null;
+        //TODO
+    }
+
+    @Override
     public ValidatableResponse get() {
         return null;
         //TODO

@@ -1,11 +1,9 @@
 package requests;
 
-import io.restassured.http.ContentType;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import models.requests.TransferMoneyRequest;
-import org.apache.http.HttpStatus;
 
 import static io.restassured.RestAssured.given;
 
@@ -22,6 +20,12 @@ public class TransferMoneyRequester extends Request<TransferMoneyRequest> {
                 .post("/api/v1/accounts/transfer")
                 .then()
                 .spec(responseSpecification);
+    }
+
+    @Override
+    public ValidatableResponse put(TransferMoneyRequest model) {
+        return null;
+        //TODO
     }
 
     @Override

@@ -3,23 +3,23 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.requests.GetUserAccountsRequest;
+import models.requests.GetUserProfile;
 
 import static io.restassured.RestAssured.given;
 
-public class GetAccountsRequester extends Request<GetUserAccountsRequest> {
-    public GetAccountsRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+public class GetUserProfileRequester extends Request<GetUserProfile> {
+    public GetUserProfileRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
     @Override
-    public ValidatableResponse post(GetUserAccountsRequest model) {
+    public ValidatableResponse post(GetUserProfile model) {
         return null;
         //TODO
     }
 
     @Override
-    public ValidatableResponse put(GetUserAccountsRequest model) {
+    public ValidatableResponse put(GetUserProfile model) {
         return null;
         //TODO
     }
@@ -28,9 +28,8 @@ public class GetAccountsRequester extends Request<GetUserAccountsRequest> {
     public ValidatableResponse get() {
         return given()
                 .spec(requestSpecification)
-                .get("/api/v1/customer/accounts")
+                .get("/api/v1/customer/profile")
                 .then()
                 .spec(responseSpecification);
     }
-
 }
