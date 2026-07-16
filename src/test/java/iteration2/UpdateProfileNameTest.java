@@ -4,16 +4,18 @@ import generators.RandomData;
 import models.UserRole;
 import models.requests.ChangeNameRequest;
 import models.requests.CreateUserRequest;
+import models.requests.LoginRequest;
 import models.responses.ChangeNameResponse;
-import models.responses.GetUserProfileResponse;
+import models.responses.CreateUserResponse;
+import models.responses.GetCustomerProfileResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
-import requests.ChangeNameRequester;
-import requests.GetUserProfileRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -31,28 +33,44 @@ public class UpdateProfileNameTest {
 
     @BeforeEach
     public void setup(){
-        //создание пользователя
+        //готовим данные для создания пользователя
         var createUserRequest = CreateUserRequest.builder()
                 .username(RandomData.getUserName())
                 .password(RandomData.getUserPassword())
                 .role(UserRole.USER.toString())
                 .build();
 
-        userAuthToken = new AdminCreateUserRequester(
+        //создание пользователя
+        new ValidatedCrudRequester<CreateUserResponse>(
                 RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_CREATE_USERS,
                 ResponseSpecs.entityWasCreated()
         )
-                .post(createUserRequest)
+                .post(createUserRequest);
+
+        //логин под созданным пользователем
+        var loginRequest = LoginRequest.builder()
+                .username(createUserRequest.getUsername())
+                .password(createUserRequest.getPassword())
+                .build();
+
+        userAuthToken = new CrudRequester(
+                RequestSpecs.unAuthSpec(),
+                Endpoint.LOGIN,
+                ResponseSpecs.requestReturnsOK()
+        )
+                .post(loginRequest)
                 .extract()
                 .header("authorization");
 
-        initialName = new GetUserProfileRequester(
+        initialName = new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.GET_CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK()
         )
                 .get()
                 .extract()
-                .as(GetUserProfileResponse.class)
+                .as(GetCustomerProfileResponse.class)
                 .getName();
     }
 
@@ -77,13 +95,12 @@ public class UpdateProfileNameTest {
                 .name(DEFAULT_NAME)
                 .build();
 
-        var response = new ChangeNameRequester(
+        var response = new ValidatedCrudRequester<ChangeNameResponse>(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.CHANGE_CUSTOMER_NAME,
                 ResponseSpecs.requestReturnsOK()
         )
-                .put(changeName)
-                .extract()
-                .as(ChangeNameResponse.class);
+                .put(changeName);
 
         String newUserName = response.getCustomer().getName();
         String message = response.getMessage();
@@ -91,13 +108,12 @@ public class UpdateProfileNameTest {
         assertEquals(DEFAULT_NAME, newUserName);
         assertEquals(DEFAULT_SUCCESS_MESSAGE, message);
 
-        var profileResponse = new GetUserProfileRequester(
+        var profileResponse = new ValidatedCrudRequester<GetCustomerProfileResponse>(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.GET_CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK()
         )
-                .get()
-                .extract()
-                .as(GetUserProfileResponse.class);
+                .get();
 
         String profileName = profileResponse.getName();
         assertEquals(DEFAULT_NAME, profileName);
@@ -110,19 +126,19 @@ public class UpdateProfileNameTest {
                 .name(newName)
                 .build();
 
-        new ChangeNameRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.CHANGE_CUSTOMER_NAME,
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
                 .put(changeName);
 
-        var response = new GetUserProfileRequester(
+        var response = new ValidatedCrudRequester<GetCustomerProfileResponse>(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.GET_CUSTOMER_PROFILE,
                 ResponseSpecs.requestReturnsOK()
         )
-                .get()
-                .extract()
-                .as(GetUserProfileResponse.class);
+                .get();
 
         String newUserName = response.getName();
 

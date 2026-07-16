@@ -4,26 +4,89 @@ import generators.RandomData;
 import models.*;
 import models.requests.CreateUserRequest;
 import models.requests.DepositMoneyRequest;
+import models.requests.LoginRequest;
 import models.responses.CreateAccountResponse;
+import models.responses.CreateUserResponse;
+import models.responses.DepositMoneyResponse;
 import models.responses.GetUserAccountsResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
-import requests.CreateAccountRequester;
-import requests.DepositMoneyRequester;
-import requests.GetAccountsRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 
 public class DepositTest {
+    private static final BigDecimal DEFAULT_BALANCE = new BigDecimal("0.00");
+
+    private String userAuthToken;
+    private long userAccountId;
+
+
+    //хэлпер для получения баланса пользователя
+    private BigDecimal getAccountBalance(GetUserAccountsResponse[] accounts, long accountId) {
+        return Arrays.stream(accounts)
+                .filter(acc -> acc.getId() == accountId)
+                .map(GetUserAccountsResponse::getBalance)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    @BeforeEach
+    public void setup() {
+        //готовим данные для создания пользователя
+        var createUserRequest = CreateUserRequest.builder()
+                .username(RandomData.getUserName())
+                .password(RandomData.getUserPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        //создание пользователя
+        new ValidatedCrudRequester<CreateUserResponse>(
+                RequestSpecs.adminSpec(),
+                Endpoint.ADMIN_CREATE_USERS,
+                ResponseSpecs.entityWasCreated()
+        )
+                .post(createUserRequest);
+
+        //логин под созданным пользователем
+        var loginRequest = LoginRequest.builder()
+                .username(createUserRequest.getUsername())
+                .password(createUserRequest.getPassword())
+                .build();
+
+        userAuthToken = new CrudRequester(
+                RequestSpecs.unAuthSpec(),
+                Endpoint.LOGIN,
+                ResponseSpecs.requestReturnsOK()
+        )
+                .post(loginRequest)
+                .extract()
+                .header("authorization");
+
+        //создание 1го аккаунта (sender)
+        var createAccountResponse = new ValidatedCrudRequester<CreateAccountResponse>(
+                RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.CREATE_ACCOUNTS,
+                ResponseSpecs.entityWasCreated()
+        )
+                .post(null);
+
+
+        //вытаскиваем айдишку счета
+        userAccountId = createAccountResponse.getId();
+    }
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
@@ -52,66 +115,34 @@ public class DepositTest {
     @MethodSource("depositValidData")
     @DisplayName("Юзер может пополнить акк")
     public void userCanDepositOnHisAccount(BigDecimal balance) {
-        //создание
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        //создание нового пользователя с админской учетки и сохранение его токена
-        String userAuthToken = new AdminCreateUserRequester(
-                //админ реквест спека - хэддеры запроса + фильтры(для консоли) + бейс uri
-                RequestSpecs.adminSpec(),
-                //респонс спека - проверяет что статус ответа 201
-                ResponseSpecs.entityWasCreated()
-        )
-                //пост запрос вызывается у класса AdminCreateUserRequest
-                //берем объект созданный выше и прокидывает его в запрос
-                //объект тут = model в аргументе запроса в методе класса. Тут юзернейм, пароль и роль.
-                .post(createUserRequest)
-                .extract()
-                .header("authorization");
-
-        //создание аккаунта от лица пользователя, которого создали на прошлом шаге
-        CreateAccountResponse accountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null)
-                .extract()
-                .body()
-                .as(CreateAccountResponse.class);
-
-        Long accountId = accountResponse.getId();
-
         //стартовый баланс пользователя
-        BigDecimal initialBalance = new BigDecimal("0.00");
+        BigDecimal initialBalance = DEFAULT_BALANCE;
 
         //создаем объект запроса на депозит
-        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+        var depositMoneyRequest = DepositMoneyRequest.builder()
+                .id(userAccountId)
                 .balance(balance)
                 .build();
 
         //делаем пост запрос на депозит
-        new DepositMoneyRequester(
+        new ValidatedCrudRequester<DepositMoneyResponse>(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         )
                 .post(depositMoneyRequest);
 
         //делаем гет запрос на проверку изменения данных
-        GetUserAccountsResponse[] accounts = new GetAccountsRequester(
+        var accounts = new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.GET_CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()
         )
                 .get()
                 .extract()
-                .body()
                 .as(GetUserAccountsResponse[].class);
 
-        BigDecimal balanceAfterDeposit = accounts[0].getBalance();
+        BigDecimal balanceAfterDeposit = getAccountBalance(accounts, userAccountId);
         BigDecimal expectedBalance = initialBalance.add(balance);
 
         //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
@@ -125,45 +156,21 @@ public class DepositTest {
     @MethodSource("depositInvalidData")
     @DisplayName("Юзер не может пополнить при невалидных данных")
     public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal balance, String errorValue) {
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        String userAuthToken = new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated()
-        )
-
-                .post(createUserRequest)
-                .extract()
-                .header("authorization");
-
-        CreateAccountResponse accountResponse = new CreateAccountRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null)
-                .extract()
-                .body()
-                .as(CreateAccountResponse.class);
-
-        Long accountId = accountResponse.getId();
-
-        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+        var depositMoneyRequest = DepositMoneyRequest.builder()
+                .id(userAccountId)
                 .balance(balance)
                 .build();
 
-        new DepositMoneyRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
                 .post(depositMoneyRequest);
 
-        GetUserAccountsResponse[] accounts = new GetAccountsRequester(
+        var accounts = new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.GET_CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()
         )
                 .get()
@@ -172,8 +179,8 @@ public class DepositTest {
                 .as(GetUserAccountsResponse[].class);
 
 
-        BigDecimal expectedBalance = new BigDecimal("0.00");
-        BigDecimal balanceAfterDeposit = accounts[0].getBalance();
+        BigDecimal expectedBalance = DEFAULT_BALANCE;
+        BigDecimal balanceAfterDeposit = getAccountBalance(accounts, userAccountId);
 
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
     }
@@ -182,37 +189,16 @@ public class DepositTest {
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
     public void userCanNotDepositOnInvalidAccount(int accountId, String errorValue) {
-        //создание
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
-
-        //создание нового пользователя с админской учетки и сохранение его токена
-        String userAuthToken = new AdminCreateUserRequester(
-                //админ реквест спека - хэддеры запроса + фильтры(для консоли) + бейс uri
-                RequestSpecs.adminSpec(),
-                //респонс спека - проверяет что статус ответа 201
-                ResponseSpecs.entityWasCreated()
-        )
-                //пост запрос вызывается у класса AdminCreateUserRequest
-                //берем объект созданный выше и прокидывает его в запрос
-                //объект тут = model в аргументе запроса в методе класса. Тут юзернейм, пароль и роль.
-                .post(createUserRequest)
-                .extract()
-                .header("authorization");
-
-
         //создаем объект запроса на депозит
-        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
+        var depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
                 .balance(new BigDecimal("100"))
                 .build();
 
         //делаем пост запрос на депозит
-        new DepositMoneyRequester(
+        new CrudRequester(
                 RequestSpecs.authAsUser(userAuthToken),
+                Endpoint.DEPOSIT_MONEY,
                 ResponseSpecs.requestReturnsForbidden(errorValue)
         )
                 .post(depositMoneyRequest);

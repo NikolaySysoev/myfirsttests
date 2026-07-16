@@ -8,5 +8,5 @@ import models.BaseModel;
 @Data
 @AllArgsConstructor
 @Builder
-public class GetUserProfile extends BaseModel {
+public class GetCustomerProfileRequest extends BaseModel {
 }
