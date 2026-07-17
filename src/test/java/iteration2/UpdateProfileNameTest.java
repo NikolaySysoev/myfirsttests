@@ -1,7 +1,6 @@
 package iteration2;
 
-import generators.RandomData;
-import models.UserRole;
+import generators.RandomEntityGenerator;
 import models.requests.ChangeNameRequest;
 import models.requests.CreateUserRequest;
 import models.requests.LoginRequest;
@@ -34,11 +33,7 @@ public class UpdateProfileNameTest {
     @BeforeEach
     public void setup(){
         //готовим данные для создания пользователя
-        var createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
 
         //создание пользователя
         new ValidatedCrudRequester<CreateUserResponse>(

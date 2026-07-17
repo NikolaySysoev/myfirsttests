@@ -17,6 +17,7 @@
         <lombok.version>1.18.46</lombok.version>
         <jackson.version>2.20.1</jackson.version>
         <asserj.version>3.27.7</asserj.version>
+        <generex.version>1.0.2</generex.version>
     </properties>
 
     <dependencies>
@@ -63,6 +64,12 @@
             <artifactId>assertj-core</artifactId>
             <version>${asserj.version}</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.mifmif</groupId>
+            <artifactId>generex</artifactId>
+            <version>${generex.version}</version>
         </dependency>
     </dependencies>
 

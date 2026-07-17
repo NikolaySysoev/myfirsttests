@@ -1,8 +1,10 @@
 package iteration2;
 
-import generators.RandomData;
-import models.UserRole;
-import models.requests.*;
+import generators.RandomEntityGenerator;
+import models.requests.CreateUserRequest;
+import models.requests.DepositMoneyRequest;
+import models.requests.LoginRequest;
+import models.requests.TransferMoneyRequest;
 import models.responses.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,11 +44,7 @@ public class TransferTests extends BaseTest {
     @BeforeEach
     public void setup() {
         //готовим данные для создания пользователя
-        var createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
 
         //создание пользователя
         new ValidatedCrudRequester<CreateUserResponse>(
@@ -231,11 +229,8 @@ public class TransferTests extends BaseTest {
     @MethodSource("validAmount")
     public void userCanTransferOnOtherUserAccount(BigDecimal transferAmount) {
         //создаем 2го пользователя
-        var createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        //готовим данные для создания пользователя
+        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
 
         new ValidatedCrudRequester<CreateUserResponse>(
                 RequestSpecs.adminSpec(),
@@ -328,11 +323,8 @@ public class TransferTests extends BaseTest {
     @MethodSource("invalidAmount")
     public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
         //создаем 2го пользователя
-        var createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        //готовим данные для создания пользователя
+        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
 
         new ValidatedCrudRequester<CreateUserResponse>(
                 RequestSpecs.adminSpec(),

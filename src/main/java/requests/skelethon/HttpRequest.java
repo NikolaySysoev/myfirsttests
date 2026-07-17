@@ -1,8 +1,7 @@
-package requests.skelethon.requesters;
+package requests.skelethon;
 
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import requests.skelethon.Endpoint;
 
 public abstract class HttpRequest {
     protected RequestSpecification requestSpecification;

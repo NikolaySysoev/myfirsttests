@@ -1,7 +1,6 @@
 package iteration2;
 
-import generators.RandomData;
-import models.*;
+import generators.RandomEntityGenerator;
 import models.requests.CreateUserRequest;
 import models.requests.DepositMoneyRequest;
 import models.requests.LoginRequest;
@@ -20,11 +19,11 @@ import requests.skelethon.requesters.ValidatedCrudRequester;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class DepositTest {
@@ -46,11 +45,7 @@ public class DepositTest {
     @BeforeEach
     public void setup() {
         //готовим данные для создания пользователя
-        var createUserRequest = CreateUserRequest.builder()
-                .username(RandomData.getUserName())
-                .password(RandomData.getUserPassword())
-                .role(UserRole.USER.toString())
-                .build();
+        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
 
         //создание пользователя
         new ValidatedCrudRequester<CreateUserResponse>(

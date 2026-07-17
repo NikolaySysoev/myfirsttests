@@ -5,6 +5,7 @@ import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import models.BaseModel;
 import requests.skelethon.Endpoint;
+import requests.skelethon.HttpRequest;
 import requests.skelethon.interfaces.CrudEndpointInterface;
 
 import static io.restassured.RestAssured.given;
