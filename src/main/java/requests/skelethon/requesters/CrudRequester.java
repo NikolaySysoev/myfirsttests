@@ -52,7 +52,7 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
         return given()
                 .spec(requestSpecification)
                 .body(model)
-                .put("customer/profile")
+                .put(endpoint.getUrl())
                 .then()
                 .spec(responseSpecification);
     }
