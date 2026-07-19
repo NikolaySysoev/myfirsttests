@@ -1,6 +1,7 @@
 package iteration2;
 
 import models.requests.DepositMoneyRequest;
+import models.responses.DepositMoneyResponse;
 import models.responses.GetUserAccountsResponse;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,6 @@ import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -83,7 +83,7 @@ public class DepositTest {
                 .balance(balance)
                 .build();
 
-        new ValidatedCrudRequester<DepositMoneyRequest>(
+        new ValidatedCrudRequester<DepositMoneyResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
@@ -119,15 +119,7 @@ public class DepositTest {
         )
                 .post(depositMoneyRequest);
 
-        var accounts = new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
+        var accounts = UserSteps.getAccounts(username, password);
 
 
         BigDecimal expectedBalance = userInitialBalance;

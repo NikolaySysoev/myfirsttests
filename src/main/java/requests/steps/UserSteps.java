@@ -47,11 +47,11 @@ public class UserSteps {
                 .post(null);
     }
 
-    public static DepositMoneyResponse depositMoney(long accountId, BigDecimal balance, String authToken) {
+    public static DepositMoneyResponse depositMoney(long accountId, BigDecimal balance, String username, String password) {
         var request = DepositMoneyRequest.builder().id(accountId).balance(balance).build();
 
         return new ValidatedCrudRequester<DepositMoneyResponse>(
-                RequestSpecs.authAsUser(authToken),
+                RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         ).
