@@ -1,12 +1,14 @@
 package iteration2;
 
 import generators.RandomEntityGenerator;
+import models.BaseModel;
 import models.requests.ChangeNameRequest;
 import models.requests.CreateUserRequest;
 import models.requests.LoginRequest;
 import models.responses.ChangeNameResponse;
 import models.responses.CreateUserResponse;
 import models.responses.GetCustomerProfileResponse;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +17,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -22,7 +26,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class UpdateProfileNameTest {
+public class UpdateProfileNameTest extends BaseTest {
     private static final String DEFAULT_NAME = "Nikolay Sysoev";
     private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
     private static final String DEFAULT_ERROR_MESSAGE = "Name must contain two words with letters only";
@@ -32,41 +36,14 @@ public class UpdateProfileNameTest {
 
     @BeforeEach
     public void setup(){
-        //готовим данные для создания пользователя
-        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
-
-        //создание пользователя
-        new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_CREATE_USERS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(createUserRequest);
+        //создаем пользователя
+        var createUserRequest = AdminSteps.createUser();
 
         //логин под созданным пользователем
-        var loginRequest = LoginRequest.builder()
-                .username(createUserRequest.getUsername())
-                .password(createUserRequest.getPassword())
-                .build();
+        userAuthToken = UserSteps.loginUser(createUserRequest);
 
-        userAuthToken = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(loginRequest)
-                .extract()
-                .header("authorization");
-
-        initialName = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .as(GetCustomerProfileResponse.class)
-                .getName();
+        //вытаскиваем имя по умолчанию, заданное после создания пользователя
+        initialName = UserSteps.getCustomerProfile(userAuthToken).getName();
     }
 
     public static Stream<Arguments> invalidName() {
@@ -100,15 +77,10 @@ public class UpdateProfileNameTest {
         String newUserName = response.getCustomer().getName();
         String message = response.getMessage();
 
-        assertEquals(DEFAULT_NAME, newUserName);
-        assertEquals(DEFAULT_SUCCESS_MESSAGE, message);
+        softly.assertThat(DEFAULT_NAME.equals(newUserName));
+        softly.assertThat(DEFAULT_SUCCESS_MESSAGE.equals(message));
 
-        var profileResponse = new ValidatedCrudRequester<GetCustomerProfileResponse>(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get();
+        var profileResponse = UserSteps.getCustomerProfile(userAuthToken);
 
         String profileName = profileResponse.getName();
         assertEquals(DEFAULT_NAME, profileName);
@@ -128,12 +100,7 @@ public class UpdateProfileNameTest {
         )
                 .put(changeName);
 
-        var response = new ValidatedCrudRequester<GetCustomerProfileResponse>(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_PROFILE,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get();
+        var response = UserSteps.getCustomerProfile(userAuthToken);
 
         String newUserName = response.getName();
 

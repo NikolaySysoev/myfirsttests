@@ -11,8 +11,11 @@ import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 
 import java.util.List;
+import java.util.Map;
 
 public class RequestSpecs {
+    private static Map<String, String> authHeaders = Map.of("admin", "Basic YWRtaW46YWRtaW4=");
+
     private RequestSpecs() {
     }
 
@@ -26,7 +29,7 @@ public class RequestSpecs {
                 .setBaseUri(Config.getProperty("server") + Config.getProperty("apiVersion"));
     }
 
-    public static RequestSpecification unAuthSpec(){
+    public static RequestSpecification unAuthSpec() {
         return defaultRequestBuilder()
                 .build();
     }
@@ -38,23 +41,29 @@ public class RequestSpecs {
     }
 
     public static RequestSpecification authAsUser(String username, String password) {
-        String userAuthHeader = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(LoginRequest.builder().username(username).password(password).build())
-                .extract()
-                .header("authorization");
+        String userAuthHeader;
+
+        if (!authHeaders.containsKey(username)) {
+            userAuthHeader = new CrudRequester(
+                    RequestSpecs.unAuthSpec(),
+                    Endpoint.LOGIN,
+                    ResponseSpecs.requestReturnsOK()
+            )
+                    .post(LoginRequest.builder().username(username).password(password).build())
+                    .extract()
+                    .header("authorization");
+        } else {
+            userAuthHeader = authHeaders.get(username);
+        }
 
         return defaultRequestBuilder()
                 .addHeader("Authorization", userAuthHeader)
                 .build();
     }
 
-    public static RequestSpecification authAsUser(String userAuthHeader) {
-        return defaultRequestBuilder()
-                .addHeader("Authorization", userAuthHeader)
-                .build();
+        public static RequestSpecification authAsUser (String userAuthHeader){
+            return defaultRequestBuilder()
+                    .addHeader("Authorization", userAuthHeader)
+                    .build();
+        }
     }
-}

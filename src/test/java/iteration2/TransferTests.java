@@ -2,7 +2,6 @@ package iteration2;
 
 import generators.RandomEntityGenerator;
 import models.requests.CreateUserRequest;
-import models.requests.DepositMoneyRequest;
 import models.requests.LoginRequest;
 import models.requests.TransferMoneyRequest;
 import models.responses.*;
@@ -14,6 +13,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -23,7 +24,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TransferTests extends BaseTest {
+public class TransferTests extends BaseTest{
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
 
     private String userAuthToken;
@@ -43,76 +44,31 @@ public class TransferTests extends BaseTest {
 
     @BeforeEach
     public void setup() {
-        //готовим данные для создания пользователя
-        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
-
-        //создание пользователя
-        new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_CREATE_USERS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(createUserRequest);
-
-        //логин под созданным пользователем
-        var loginRequest = LoginRequest.builder()
-                .username(createUserRequest.getUsername())
-                .password(createUserRequest.getPassword())
-                .build();
-
-        userAuthToken = new CrudRequester (
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(loginRequest)
-                .extract()
-                .header("authorization");
+        //создаем пользователя
+        var createUserRequest = AdminSteps.createUser();
 
         //создание 1го аккаунта (sender)
-        var firstAccountResponse = new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.CREATE_ACCOUNTS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null);
+        var firstAccountResponse = UserSteps.createAccount(
+                createUserRequest.getUsername(),
+                createUserRequest.getPassword()
+        );
 
         //создание 2го аккаунта (receiver)
-        var secondAccountResponse = new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.CREATE_ACCOUNTS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null);
+        var secondAccountResponse = UserSteps.createAccount(
+                createUserRequest.getUsername(),
+                createUserRequest.getPassword()
+        );
 
         //вытаскиваем айдишки счетов
         senderAccountId = firstAccountResponse.getId();
         receiverAccountId = secondAccountResponse.getId();
 
-        //готовим данные для пополнения счета
-        var depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(senderAccountId)
-                .balance(DEFAULT_DEPOSIT)
-                .build();
-
         //депозитим для будущих трансферов (3 депозита)
         for (int i = 0; i < 3; i++) {
-            new ValidatedCrudRequester<DepositMoneyResponse>(
-                    RequestSpecs.authAsUser(userAuthToken),
-                    Endpoint.DEPOSIT_MONEY,
-                    ResponseSpecs.requestReturnsOK()
-            )
-                    .post(depositMoneyRequest);
+            UserSteps.depositMoney(senderAccountId, DEFAULT_DEPOSIT, userAuthToken);
         }
 
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .as(GetUserAccountsResponse[].class);
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //вытаскиваем баланс с первого счета
         senderAccountBalanceAfterSetup = getAccountBalance(userAccounts, senderAccountId);
@@ -155,15 +111,7 @@ public class TransferTests extends BaseTest {
                 .post(transferMoneyRequest);
 
         //получаем счета пользователя
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //вытаскиваем баланс с первого счета
         BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
@@ -200,15 +148,7 @@ public class TransferTests extends BaseTest {
                 .post(transferMoneyRequest);
 
         //получаем счета пользователя
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //вытаскиваем баланс с первого счета
         BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
@@ -228,47 +168,20 @@ public class TransferTests extends BaseTest {
     @ParameterizedTest
     @MethodSource("validAmount")
     public void userCanTransferOnOtherUserAccount(BigDecimal transferAmount) {
-        //создаем 2го пользователя
-        //готовим данные для создания пользователя
-        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
+        //создаем 2го пользователя, логинимся под ним, создаем счет
+        var createUserRequest = AdminSteps.createUser();
+        var secondUserAccountResponse = UserSteps.createAccount(
+                createUserRequest.getUsername(),
+                createUserRequest.getPassword()
+        );
 
-        new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_CREATE_USERS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(createUserRequest);
-
-        //логин под вторым пользователем
-        var loginUser = LoginRequest.builder()
-                .username(createUserRequest.getUsername())
-                .password(createUserRequest.getPassword())
-                .build();
-
-        String secondUserAuthToken = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(loginUser)
-                .extract()
-                .header("authorization");
-
-        //создаем аккаунт второму пользователя
-        var secondUserAccountResponse = new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(secondUserAuthToken),
-                Endpoint.CREATE_ACCOUNTS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null);
-
-        long secondUserAccountId = secondUserAccountResponse.getId();
+        long receiverUserAccountId = secondUserAccountResponse.getId();
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
 
         //запрос на трансфер
         var transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(senderAccountId)
-                .receiverAccountId(secondUserAccountId)
+                .receiverAccountId(receiverUserAccountId)
                 .amount(transferAmount)
                 .build();
 
@@ -280,33 +193,15 @@ public class TransferTests extends BaseTest {
                 .post(transferMoneyRequest);
 
         //получаем счета 1 пользователя
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
-
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //получаем счета 2 пользователя
-        var secondUserAccountsResponse = new CrudRequester(
-                RequestSpecs.authAsUser(secondUserAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
-
+        var secondUserAccountsResponse = UserSteps.getAccounts(secondUserAuthToken);
 
         //вытаскиваем баланс со счета 1го пользователя
         BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
         //вытаскиваем баланс со счета 2го пользователя
-        BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(secondUserAccountsResponse, secondUserAccountId);
+        BigDecimal secondAccountBalanceAfterTransfer = getAccountBalance(secondUserAccountsResponse, receiverUserAccountId);
 
         //ожидаем что на 1 счете теперь балланс стал меньше на сумму трансфера
         BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup.subtract(transferAmount);
@@ -322,39 +217,10 @@ public class TransferTests extends BaseTest {
     @ParameterizedTest
     @MethodSource("invalidAmount")
     public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
-        //создаем 2го пользователя
-        //готовим данные для создания пользователя
-        var createUserRequest = RandomEntityGenerator.generate(CreateUserRequest.class);
-
-        new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_CREATE_USERS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(createUserRequest);
-
-        //логин под вторым пользователем
-        var loginUser = LoginRequest.builder()
-                .username(createUserRequest.getUsername())
-                .password(createUserRequest.getPassword())
-                .build();
-
-        String secondUserAuthToken = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(loginUser)
-                .extract()
-                .header("authorization");
-
-        //создаем аккаунт второму пользователя
-        var secondUserAccountResponse = new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(secondUserAuthToken),
-                Endpoint.CREATE_ACCOUNTS,
-                ResponseSpecs.entityWasCreated()
-        )
-                .post(null);
+        //создаем 2го пользователя, логинимся под ним, создаем счет
+        var createUserRequest = AdminSteps.createUser();
+        var secondUserAuthToken = UserSteps.loginUser(createUserRequest);
+        var secondUserAccountResponse = UserSteps.createAccount(secondUserAuthToken);
 
         long secondUserAccountId = secondUserAccountResponse.getId();
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
@@ -374,28 +240,10 @@ public class TransferTests extends BaseTest {
                 .post(transferMoneyRequest);
 
     //получаем счета 1 пользователя
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
-
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //получаем счета 2 пользователя
-        var secondUserAccountsResponse = new CrudRequester(
-                RequestSpecs.authAsUser(secondUserAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
-
+        var secondUserAccountsResponse = UserSteps.getAccounts(secondUserAuthToken);
 
         //вытаскиваем баланс со счета 1го пользователя
         BigDecimal senderAccountBalanceAfterTransfer = getAccountBalance(userAccounts, senderAccountId);
@@ -435,20 +283,10 @@ public class TransferTests extends BaseTest {
                 .post(transferMoneyRequest);
 
         //получаем счета пользователя
-        var userAccounts = new CrudRequester(
-                RequestSpecs.authAsUser(userAuthToken),
-                Endpoint.GET_CUSTOMER_ACCOUNTS,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .get()
-                .extract()
-                .body()
-                .as(GetUserAccountsResponse[].class);
-
+        var userAccounts = UserSteps.getAccounts(userAuthToken);
 
         //вытаскиваем баланс со второго счета
         BigDecimal receiverBalanceAfterTransfer = getAccountBalance(userAccounts, receiverAccountId);
-
         BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
 
         //проверяем баланс 2 счета
