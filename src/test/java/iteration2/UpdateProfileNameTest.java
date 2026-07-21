@@ -1,5 +1,6 @@
 package iteration2;
 
+import models.assertions.ModelAssertions;
 import models.requests.ChangeNameRequest;
 import models.responses.ChangeNameResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,19 +59,22 @@ public class UpdateProfileNameTest extends BaseTest {
 
     @Test
     public void userCanChangeNameWhenValidData() {
-        var changeName = ChangeNameRequest.builder()
+        var changeNameRequest = ChangeNameRequest.builder()
                 .name(DEFAULT_VALID_NAME)
                 .build();
 
-        var response = new ValidatedCrudRequester<ChangeNameResponse>(
+        var changeNameResponse = new ValidatedCrudRequester<ChangeNameResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.CHANGE_CUSTOMER_NAME,
                 ResponseSpecs.requestReturnsOK()
         )
-                .put(changeName);
+                .put(changeNameRequest);
 
-        String newUserName = response.getCustomer().getName();
-        String message = response.getMessage();
+        ModelAssertions.assertThatModels(changeNameRequest,changeNameResponse).match();
+
+
+        String newUserName = changeNameResponse.getCustomer().getName();
+        String message = changeNameResponse.getMessage();
 
         softly.assertThat(newUserName).isEqualTo(DEFAULT_VALID_NAME);
         softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE);

@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public class RequestSpecs {
-    private static Map<String, String> authHeaders = new HashMap<>(Map.of("admin", "Basic YWRtaW46YWRtaW4="));
+    private static Map<String, String> authHeaders = new HashMap<>(Map.of(Config.getProperty("adminLogin"), Config.getProperty("adminToken")));
 
     private RequestSpecs() {
     }
@@ -37,7 +37,7 @@ public class RequestSpecs {
 
     public static RequestSpecification adminSpec() {
         return defaultRequestBuilder()
-                .addHeader("Authorization", "Basic YWRtaW46YWRtaW4=")
+                .addHeader("Authorization", Config.getProperty("adminToken"))
                 .build();
     }
 

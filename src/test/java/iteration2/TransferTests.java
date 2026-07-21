@@ -1,11 +1,11 @@
 package iteration2;
 
+import models.assertions.ModelAssertions;
 import models.requests.TransferMoneyRequest;
 import models.responses.TransferMoneyResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
@@ -20,8 +20,11 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TransferTests extends BaseTest{
+public class TransferTests extends BaseTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
+    private static final String LOWER_BOUNDARY_ERROR_MESSAGE = "Transfer amount must be at least 0.01";
+    private static final String UPPER_BOUNDARY_ERROR_MESSAGE = "Transfer amount cannot exceed 10000";
+    private static final String INSUFFICIENT_FUNDS_ERROR = "Invalid transfer: insufficient funds or invalid accounts";
 
     private long senderAccountId;
     private long receiverAccountId;
@@ -76,10 +79,14 @@ public class TransferTests extends BaseTest{
 
     public static Stream<Arguments> invalidAmount() {
         return Stream.of(
-                Arguments.of(new BigDecimal("10000.01"), "Transfer amount cannot exceed 10000"),
-                Arguments.of(new BigDecimal("0"), "Transfer amount must be at least 0.01"),
-                Arguments.of(new BigDecimal("-0.01"), "Transfer amount must be at least 0.01")
+                Arguments.of(new BigDecimal("10000.01"), UPPER_BOUNDARY_ERROR_MESSAGE),
+                Arguments.of(new BigDecimal("0"), LOWER_BOUNDARY_ERROR_MESSAGE),
+                Arguments.of(new BigDecimal("-0.01"), LOWER_BOUNDARY_ERROR_MESSAGE)
         );
+    }
+
+    public static Stream<Arguments> insufficientFundsData() {
+        return Stream.of(Arguments.of(new BigDecimal("100"), INSUFFICIENT_FUNDS_ERROR));
     }
 
     @ParameterizedTest
@@ -93,12 +100,14 @@ public class TransferTests extends BaseTest{
                 .build();
 
         //делаем трансфер
-        new ValidatedCrudRequester<TransferMoneyResponse>(
+        var transferMoneyResponse = new ValidatedCrudRequester<TransferMoneyResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsOK()
         )
                 .post(transferMoneyRequest);
+
+        ModelAssertions.assertThatModels(transferMoneyRequest, transferMoneyResponse).match();
 
         //получаем счета пользователя
         var userAccounts = UserSteps.getAccounts(username, password);
@@ -175,12 +184,14 @@ public class TransferTests extends BaseTest{
                 .amount(transferAmount)
                 .build();
 
-        new ValidatedCrudRequester<TransferMoneyResponse>(
+        var transferMoneyResponse = new ValidatedCrudRequester<TransferMoneyResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsOK()
         )
                 .post(transferMoneyRequest);
+
+        ModelAssertions.assertThatModels(transferMoneyRequest, transferMoneyResponse).match();
 
         //получаем счета 1 пользователя
         var userAccounts = UserSteps.getAccounts(username, password);
@@ -234,7 +245,7 @@ public class TransferTests extends BaseTest{
         )
                 .post(transferMoneyRequest);
 
-    //получаем счета 1 пользователя
+        //получаем счета 1 пользователя
         var userAccounts = UserSteps.getAccounts(username, password);
 
         //получаем счета 2 пользователя
@@ -260,34 +271,34 @@ public class TransferTests extends BaseTest{
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "100, Invalid transfer: insufficient funds or invalid accounts"
-    })
+    @MethodSource("insufficientFundsData")
     public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, String errorValue) {
-        //готовим данные для трансфера
-        //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
-        var transferMoneyRequest = TransferMoneyRequest.builder()
-                .senderAccountId(receiverAccountId)
-                .receiverAccountId(senderAccountId)
-                .amount(transferAmount)
-                .build();
+        {
+            //готовим данные для трансфера
+            //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
+            var transferMoneyRequest = TransferMoneyRequest.builder()
+                    .senderAccountId(receiverAccountId)
+                    .receiverAccountId(senderAccountId)
+                    .amount(transferAmount)
+                    .build();
 
-        //делаем трансфер
-        new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
-                Endpoint.ACCOUNTS_TRANSFER,
-                ResponseSpecs.requestReturnsBadRequest(errorValue)
-        )
-                .post(transferMoneyRequest);
+            //делаем трансфер
+            new CrudRequester(
+                    RequestSpecs.authAsUser(username, password),
+                    Endpoint.ACCOUNTS_TRANSFER,
+                    ResponseSpecs.requestReturnsBadRequest(errorValue)
+            )
+                    .post(transferMoneyRequest);
 
-        //получаем счета пользователя
-        var userAccounts = UserSteps.getAccounts(username, password);
+            //получаем счета пользователя
+            var userAccounts = UserSteps.getAccounts(username, password);
 
-        //вытаскиваем баланс со второго счета
-        BigDecimal receiverBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
-        BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
+            //вытаскиваем баланс со второго счета
+            BigDecimal receiverBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
+            BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
 
-        //проверяем баланс 2 счета
-        assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
+            //проверяем баланс 2 счета
+            assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
+        }
     }
 }

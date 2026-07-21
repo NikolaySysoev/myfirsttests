@@ -1,8 +1,8 @@
 package iteration2;
 
+import models.assertions.ModelAssertions;
 import models.requests.DepositMoneyRequest;
 import models.responses.DepositMoneyResponse;
-import models.responses.GetUserAccountsResponse;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class DepositTest {
+    private static final String LOWER_BOUNDARY_ERROR_MESSAGE = "Deposit amount must be at least 0.01";
+    private static final String UPPER_BOUNDARY_ERROR_MESSAGE = "Deposit amount cannot exceed 5000";
+    private static final String UNAUTHORIZED_ERROR_MESSAGE = "Unauthorized access to account";
 
     private String userAuthToken;
     private BigDecimal userInitialBalance;
@@ -60,16 +63,16 @@ public class DepositTest {
 
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                Arguments.of(new BigDecimal("0.00"), "Deposit amount must be at least 0.01"),
-                Arguments.of(new BigDecimal("5000.01"), "Deposit amount cannot exceed 5000"),
-                Arguments.of(new BigDecimal("-0.01"), "Deposit amount must be at least 0.01")
+                Arguments.of(new BigDecimal("0.00"), LOWER_BOUNDARY_ERROR_MESSAGE),
+                Arguments.of(new BigDecimal("5000.01"), UPPER_BOUNDARY_ERROR_MESSAGE),
+                Arguments.of(new BigDecimal("-0.01"), LOWER_BOUNDARY_ERROR_MESSAGE)
         );
     }
 
     public static Stream<Arguments> depositInvalidAccount() {
         return Stream.of(
-                Arguments.of(1, "Unauthorized access to account"),
-                Arguments.of(999999999, "Unauthorized access to account")
+                Arguments.of(1, UNAUTHORIZED_ERROR_MESSAGE),
+                Arguments.of(999999999, UNAUTHORIZED_ERROR_MESSAGE)
         );
     }
 
@@ -83,12 +86,15 @@ public class DepositTest {
                 .balance(balance)
                 .build();
 
-        new ValidatedCrudRequester<DepositMoneyResponse>(
+        var response = new ValidatedCrudRequester<DepositMoneyResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         ).
                 post(request);
+
+        //echo проверка id аккаунта
+        ModelAssertions.assertThatModels(request,response).match();
 
         //делаем гет запрос на проверку изменения данных
         var accounts = UserSteps.getAccounts(username, password);

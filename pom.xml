@@ -63,7 +63,6 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${asserj.version}</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
