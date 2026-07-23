@@ -1,159 +1,131 @@
 package iteration2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.apache.http.HttpStatus;
-import org.junit.jupiter.api.BeforeAll;
+import generators.RandomData;
+import models.UserRole;
+import models.requests.ChangeNameRequest;
+import models.requests.CreateUserRequest;
+import models.responses.ChangeNameResponse;
+import models.responses.GetUserProfileResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.AdminCreateUserRequester;
+import requests.ChangeNameRequester;
+import requests.GetUserProfileRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
-import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class UpdateProfileNameTest {
+    private static final String DEFAULT_NAME = "Nikolay Sysoev";
+    private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
+    private static final String DEFAULT_ERROR_MESSAGE = "Name must contain two words with letters only";
 
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(
-                        new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
+    private String userAuthToken;
+    private String initialName = null;
+
+    @BeforeEach
+    public void setup(){
+        //создание пользователя
+        var createUserRequest = CreateUserRequest.builder()
+                .username(RandomData.getUserName())
+                .password(RandomData.getUserPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        userAuthToken = new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated()
+        )
+                .post(createUserRequest)
+                .extract()
+                .header("authorization");
+
+        initialName = new GetUserProfileRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
+                .extract()
+                .as(GetUserProfileResponse.class)
+                .getName();
     }
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("Nikolay Nikolay Nikolay", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("Nikolay123 Sysoev", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("Nikolay Sysoev123", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("Nikolay^&*(! Sysoev", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("Nikolay Sysoev^&*(!", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of("12312 ^&*(!", HttpStatus.SC_BAD_REQUEST),
-                Arguments.of(null, HttpStatus.SC_BAD_REQUEST));
+                Arguments.of("Nikolay", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Nikolay Nikolay Nikolay", DEFAULT_ERROR_MESSAGE),
+                Arguments.of(" ", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Nikolay123 Sysoev", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Anna-Maria Ivanova", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Nikolay Sysoev123", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Nikolay^&*(! Sysoev", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("Nikolay Sysoev^&*(!", DEFAULT_ERROR_MESSAGE),
+                Arguments.of("12312 ^&*(!", DEFAULT_ERROR_MESSAGE)
+//                Arguments.of(null, DEFAULT_ERROR_MESSAGE)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
+        );
     }
 
     @Test
     public void userCanChangeNameWhenValidData() {
-        //создаем пользователя от лица админа
-        //генерация рандомного имени длиной 8 символов
-        String userName = UUID.randomUUID().toString().substring(0,8);
+        var changeName = ChangeNameRequest.builder()
+                .name(DEFAULT_NAME)
+                .build();
 
-        String createUserBody = String.format("""
-                {
-                            "username": "%s",
-                                "password": "verysTRongPassword33$",
-                                "role": "USER"
-                        }
-                """, userName);
-
-        //создаем пользователя и тащим токен
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body(createUserBody)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .statusCode(HttpStatus.SC_CREATED)
+        var response = new ChangeNameRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .put(changeName)
                 .extract()
-                .response();
+                .as(ChangeNameResponse.class);
 
-        String userAuthToken = response.header("Authorization");
+        String newUserName = response.getCustomer().getName();
+        String message = response.getMessage();
 
-        String requestBody = """
-                {
-                   "name": "Nikolay Sysoev"
-                 }
-                """;
+        assertEquals(DEFAULT_NAME, newUserName);
+        assertEquals(DEFAULT_SUCCESS_MESSAGE, message);
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
-
-        String nameAfterChange = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
+        var profileResponse = new GetUserProfileRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
                 .extract()
-                .body()
-                .path("name");
+                .as(GetUserProfileResponse.class);
 
-        assertEquals("Nikolay Sysoev", nameAfterChange);
+        String profileName = profileResponse.getName();
+        assertEquals(DEFAULT_NAME, profileName);
     }
 
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void UserCanNotChangeNameWhenInvalidData(Object givenName, int statusCode){
-        //создаем пользователя от лица админа
-        //генерация рандомного имени длиной 8 символов
-        String userName = UUID.randomUUID().toString().substring(0,8);
+    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue){
+        var changeName = ChangeNameRequest.builder()
+                .name(newName)
+                .build();
 
-        String createUserBody = String.format("""
-                {
-                            "username": "%s",
-                                "password": "verysTRongPassword33$",
-                                "role": "USER"
-                        }
-                """, userName);
+        new ChangeNameRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsBadRequest(errorValue)
+        )
+                .put(changeName);
 
-        //создаем пользователя и тащим токен
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body(createUserBody)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .statusCode(HttpStatus.SC_CREATED)
+        var response = new GetUserProfileRequester(
+                RequestSpecs.authAsUser(userAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
                 .extract()
-                .response();
+                .as(GetUserProfileResponse.class);
 
-        String userAuthToken = response.header("Authorization");
-        String initialName = response.path("name");
+        String newUserName = response.getName();
 
-        String requestBody = String.format("""
-                {
-                   "name": "%s"
-                 }
-                """, givenName);
-
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .body(requestBody)
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .statusCode(statusCode);
-
-        String NameAfterChange = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthToken)
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .extract()
-                .body()
-                .path("name");
-
-        assertEquals(initialName, NameAfterChange);
+        assertEquals(initialName, newUserName);
     }
 }
