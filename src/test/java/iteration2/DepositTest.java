@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class DepositTest {
+
     private static final String LOWER_BOUNDARY_ERROR_MESSAGE = "Deposit amount must be at least 0.01";
     private static final String UPPER_BOUNDARY_ERROR_MESSAGE = "Deposit amount cannot exceed 5000";
     private static final String UNAUTHORIZED_ERROR_MESSAGE = "Unauthorized access to account";
@@ -33,6 +34,7 @@ public class DepositTest {
     private long userAccountId;
     private String username;
     private String password;
+    BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1,3));
 
     @BeforeEach
     public void setup() {
@@ -141,7 +143,7 @@ public class DepositTest {
         //создаем объект запроса на депозит
         var depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
-                .balance(new BigDecimal(RandomStringUtils.randomNumeric(1,3)))
+                .balance(randomBalance)
                 .build();
 
         //делаем пост запрос на депозит
