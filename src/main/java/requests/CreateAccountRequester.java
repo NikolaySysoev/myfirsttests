@@ -23,6 +23,15 @@ public class CreateAccountRequester extends Request<CreateAccountRequest> {
                 .spec(responseSpecification);
     }
 
+    public ValidatableResponse post() {
+        return given().
+                spec(requestSpecification)
+                .post("/api/v1/accounts")
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+
     @Override
     public ValidatableResponse put(CreateAccountRequest model) {
         return null;

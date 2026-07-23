@@ -6,6 +6,7 @@ import models.requests.CreateUserRequest;
 import models.requests.DepositMoneyRequest;
 import models.responses.CreateAccountResponse;
 import models.responses.GetUserAccountsResponse;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -24,6 +25,8 @@ import java.util.stream.Stream;
 
 
 public class DepositTest {
+
+    BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1,3));
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
@@ -78,12 +81,12 @@ public class DepositTest {
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
 
-        Long accountId = accountResponse.getId();
+        long accountId = accountResponse.getId();
 
         //стартовый баланс пользователя
         BigDecimal initialBalance = new BigDecimal("0.00");
@@ -144,12 +147,12 @@ public class DepositTest {
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
 
-        Long accountId = accountResponse.getId();
+        long accountId = accountResponse.getId();
 
         DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
@@ -207,7 +210,7 @@ public class DepositTest {
         //создаем объект запроса на депозит
         DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(accountId)
-                .balance(new BigDecimal("100"))
+                .balance(randomBalance)
                 .build();
 
         //делаем пост запрос на депозит

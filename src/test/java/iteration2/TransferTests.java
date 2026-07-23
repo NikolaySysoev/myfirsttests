@@ -65,7 +65,7 @@ public class TransferTests extends BaseTest {
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
@@ -75,7 +75,7 @@ public class TransferTests extends BaseTest {
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
@@ -247,7 +247,7 @@ public class TransferTests extends BaseTest {
                 RequestSpecs.authAsUser(secondUserAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
@@ -330,7 +330,7 @@ public class TransferTests extends BaseTest {
                 RequestSpecs.authAsUser(secondUserAuthToken),
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null)
+                .post()
                 .extract()
                 .body()
                 .as(CreateAccountResponse.class);
