@@ -7,6 +7,7 @@ import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import models.requests.LoginRequest;
+import org.apache.http.HttpHeaders;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 
@@ -37,7 +38,7 @@ public class RequestSpecs {
 
     public static RequestSpecification adminSpec() {
         return defaultRequestBuilder()
-                .addHeader("Authorization", Config.getProperty("adminToken"))
+                .addHeader(HttpHeaders.AUTHORIZATION, Config.getProperty("adminToken"))
                 .build();
     }
 
@@ -52,7 +53,7 @@ public class RequestSpecs {
             )
                     .post(LoginRequest.builder().username(username).password(password).build())
                     .extract()
-                    .header("authorization");
+                    .header(HttpHeaders.AUTHORIZATION);
 
             authHeaders.put(username, userAuthHeader);
         } else {
@@ -60,13 +61,13 @@ public class RequestSpecs {
         }
 
         return defaultRequestBuilder()
-                .addHeader("Authorization", userAuthHeader)
+                .addHeader(HttpHeaders.AUTHORIZATION, userAuthHeader)
                 .build();
     }
 
     public static RequestSpecification authAsUser(String userAuthHeader) {
         return defaultRequestBuilder()
-                .addHeader("Authorization", userAuthHeader)
+                .addHeader(HttpHeaders.AUTHORIZATION, userAuthHeader)
                 .build();
     }
 }

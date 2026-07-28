@@ -9,6 +9,7 @@ import models.responses.CreateAccountResponse;
 import models.responses.DepositMoneyResponse;
 import models.responses.GetCustomerProfileResponse;
 import models.responses.GetUserAccountsResponse;
+import org.apache.http.HttpHeaders;
 import requests.skelethon.Endpoint;
 import requests.skelethon.requesters.CrudRequester;
 import requests.skelethon.requesters.ValidatedCrudRequester;
@@ -35,7 +36,7 @@ public class UserSteps {
         )
                 .post(loginRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
     }
 
     public static CreateAccountResponse createAccount(String username, String password) {
@@ -44,7 +45,7 @@ public class UserSteps {
                 Endpoint.CREATE_ACCOUNTS,
                 ResponseSpecs.entityWasCreated()
         )
-                .post(null);
+                .post();
     }
 
     public static DepositMoneyResponse depositMoney(long accountId, BigDecimal balance, String username, String password) {

@@ -3,6 +3,7 @@ package iteration2;
 import models.assertions.ModelAssertions;
 import models.requests.TransferMoneyRequest;
 import models.responses.TransferMoneyResponse;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -18,13 +19,11 @@ import specs.ResponseSpecs;
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
+import static iteration2.TestUtils.repeat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferTests extends BaseTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
-    private static final String LOWER_BOUNDARY_ERROR_MESSAGE = "Transfer amount must be at least 0.01";
-    private static final String UPPER_BOUNDARY_ERROR_MESSAGE = "Transfer amount cannot exceed 10000";
-    private static final String INSUFFICIENT_FUNDS_ERROR = "Invalid transfer: insufficient funds or invalid accounts";
 
     private long senderAccountId;
     private long receiverAccountId;
@@ -32,6 +31,7 @@ public class TransferTests extends BaseTest {
     private BigDecimal receiverAccountBalanceAfterSetup;
     private String username;
     private String password;
+    private static final BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1, 3));
 
     @BeforeEach
     public void setup() {
@@ -57,9 +57,8 @@ public class TransferTests extends BaseTest {
         receiverAccountId = secondAccountResponse.getId();
 
         //депозитим для будущих трансферов (3 депозита)
-        for (int i = 0; i < 3; i++) {
-            UserSteps.depositMoney(senderAccountId, DEFAULT_DEPOSIT, username, password);
-        }
+        repeat(3, () -> UserSteps.depositMoney(senderAccountId, DEFAULT_DEPOSIT, username, password)
+        );
 
         var userAccounts = UserSteps.getAccounts(username, password);
 
@@ -79,14 +78,16 @@ public class TransferTests extends BaseTest {
 
     public static Stream<Arguments> invalidAmount() {
         return Stream.of(
-                Arguments.of(new BigDecimal("10000.01"), UPPER_BOUNDARY_ERROR_MESSAGE),
-                Arguments.of(new BigDecimal("0"), LOWER_BOUNDARY_ERROR_MESSAGE),
-                Arguments.of(new BigDecimal("-0.01"), LOWER_BOUNDARY_ERROR_MESSAGE)
+                Arguments.of(new BigDecimal("10000.01"), ApiError.TRANSFER_HIGHER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("0"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage())
         );
     }
 
     public static Stream<Arguments> insufficientFundsData() {
-        return Stream.of(Arguments.of(new BigDecimal("100"), INSUFFICIENT_FUNDS_ERROR));
+        return Stream.of(
+                Arguments.of(randomBalance, ApiError.TRANSFER_INSUFFICIENT_FUNDS.getMessage())
+        );
     }
 
     @ParameterizedTest

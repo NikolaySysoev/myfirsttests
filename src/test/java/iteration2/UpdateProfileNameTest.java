@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class UpdateProfileNameTest extends BaseTest {
     private static final String DEFAULT_VALID_NAME = "Nikolay Sysoev";
     private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
-    private static final String DEFAULT_ERROR_MESSAGE = "Name must contain two words with letters only";
 
     private String initialName = null;
     private String username;
@@ -34,7 +33,6 @@ public class UpdateProfileNameTest extends BaseTest {
         //создаем пользователя
         var createUserRequest = AdminSteps.createUser();
 
-
         username = createUserRequest.getUsername();
         password = createUserRequest.getPassword();
 
@@ -44,16 +42,16 @@ public class UpdateProfileNameTest extends BaseTest {
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Nikolay Nikolay", DEFAULT_ERROR_MESSAGE),
-                Arguments.of(" ", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay123 Sysoev", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Anna-Maria Ivanova", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Sysoev123", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay^&*(! Sysoev", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Sysoev^&*(!", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("12312 ^&*(!", DEFAULT_ERROR_MESSAGE)
-//                Arguments.of(null, DEFAULT_ERROR_MESSAGE)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
+                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage())
+//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR.getMessage())  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
         );
     }
 
@@ -87,7 +85,7 @@ public class UpdateProfileNameTest extends BaseTest {
 
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue){
+    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue) {
         var changeName = ChangeNameRequest.builder()
                 .name(newName)
                 .build();

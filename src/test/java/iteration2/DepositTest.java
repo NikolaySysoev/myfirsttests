@@ -20,16 +20,12 @@ import specs.ResponseSpecs;
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
+import static iteration2.TestUtils.getAccountBalance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class DepositTest {
 
-    private static final String LOWER_BOUNDARY_ERROR_MESSAGE = "Deposit amount must be at least 0.01";
-    private static final String UPPER_BOUNDARY_ERROR_MESSAGE = "Deposit amount cannot exceed 5000";
-    private static final String UNAUTHORIZED_ERROR_MESSAGE = "Unauthorized access to account";
-
-    private String userAuthToken;
     private BigDecimal userInitialBalance;
     private long userAccountId;
     private String username;
@@ -65,16 +61,15 @@ public class DepositTest {
 
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                Arguments.of(new BigDecimal("0.00"), LOWER_BOUNDARY_ERROR_MESSAGE),
-                Arguments.of(new BigDecimal("5000.01"), UPPER_BOUNDARY_ERROR_MESSAGE),
-                Arguments.of(new BigDecimal("-0.01"), LOWER_BOUNDARY_ERROR_MESSAGE)
+                Arguments.of(new BigDecimal("0.00"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("5000.01"), ApiError.DEPOSIT_HIGHER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage())
         );
     }
 
     public static Stream<Arguments> depositInvalidAccount() {
         return Stream.of(
-                Arguments.of(1, UNAUTHORIZED_ERROR_MESSAGE),
-                Arguments.of(999999999, UNAUTHORIZED_ERROR_MESSAGE)
+                Arguments.of(ApiError.DEPOSIT_FORBIDDEN.getMessage())
         );
     }
 
@@ -139,10 +134,14 @@ public class DepositTest {
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
-    public void userCanNotDepositOnInvalidAccount(int accountId, String errorValue) {
+    public void userCanNotDepositOnInvalidAccount(String errorValue) {
+
+        var userRequest = AdminSteps.createUser();
+        var secondUserAccountId = UserSteps.createAccount(userRequest.getUsername(), userRequest.getPassword()).getId();
+
         //создаем объект запроса на депозит
-        var depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
+                .id(secondUserAccountId)
                 .balance(randomBalance)
                 .build();
 
@@ -153,5 +152,14 @@ public class DepositTest {
                 ResponseSpecs.requestReturnsForbidden(errorValue)
         )
                 .post(depositMoneyRequest);
+
+        //проверяем акк 2го пользователя, убеждаемся что баланс не изменился
+        var accounts = UserSteps.getAccounts(userRequest.getUsername(), userRequest.getPassword());
+
+        BigDecimal expectedBalance = new BigDecimal("0.00");
+        BigDecimal balanceAfterDeposit = getAccountBalance(accounts, secondUserAccountId);
+
+        assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
+
     }
 }
