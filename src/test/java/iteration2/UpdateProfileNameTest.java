@@ -6,6 +6,7 @@ import models.requests.ChangeNameRequest;
 import models.requests.CreateUserRequest;
 import models.responses.ChangeNameResponse;
 import models.responses.GetUserProfileResponse;
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,13 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class UpdateProfileNameTest {
     private static final String DEFAULT_NAME = "Nikolay Sysoev";
     private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
-    private static final String DEFAULT_ERROR_MESSAGE = "Name must contain two words with letters only";
 
     private String userAuthToken;
     private String initialName = null;
 
     @BeforeEach
-    public void setup(){
+    public void setup() {
         //создание пользователя
         var createUserRequest = CreateUserRequest.builder()
                 .username(RandomData.getUserName())
@@ -44,7 +44,7 @@ public class UpdateProfileNameTest {
         )
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
         initialName = new GetUserProfileRequester(
                 RequestSpecs.authAsUser(userAuthToken),
@@ -58,16 +58,16 @@ public class UpdateProfileNameTest {
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Nikolay Nikolay", DEFAULT_ERROR_MESSAGE),
-                Arguments.of(" ", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay123 Sysoev", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Anna-Maria Ivanova", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Sysoev123", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay^&*(! Sysoev", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("Nikolay Sysoev^&*(!", DEFAULT_ERROR_MESSAGE),
-                Arguments.of("12312 ^&*(!", DEFAULT_ERROR_MESSAGE)
-//                Arguments.of(null, DEFAULT_ERROR_MESSAGE)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
+                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage()),
+                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage())
+//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR.getMessage())  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
         );
     }
 
@@ -105,7 +105,7 @@ public class UpdateProfileNameTest {
 
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue){
+    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue) {
         var changeName = ChangeNameRequest.builder()
                 .name(newName)
                 .build();

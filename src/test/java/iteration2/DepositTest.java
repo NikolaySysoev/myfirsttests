@@ -7,6 +7,7 @@ import models.requests.DepositMoneyRequest;
 import models.responses.CreateAccountResponse;
 import models.responses.GetUserAccountsResponse;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,10 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
+import static iteration2.TestUtils.getAccountBalance;
 
 public class DepositTest {
 
-    BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1,3));
+    private static final BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1, 3));
 
     public static Stream<Arguments> depositValidData() {
         return Stream.of(
@@ -38,16 +40,15 @@ public class DepositTest {
 
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                Arguments.of(new BigDecimal("0.00"), "Deposit amount must be at least 0.01"),
-                Arguments.of(new BigDecimal("5000.01"), "Deposit amount cannot exceed 5000"),
-                Arguments.of(new BigDecimal("-0.01"), "Deposit amount must be at least 0.01")
+                Arguments.of(new BigDecimal("0.00"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("5000.01"), ApiError.DEPOSIT_HIGHER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage())
         );
     }
 
     public static Stream<Arguments> depositInvalidAccount() {
         return Stream.of(
-                Arguments.of(1, "Unauthorized access to account"),
-                Arguments.of(999999999, "Unauthorized access to account")
+                Arguments.of(ApiError.DEPOSIT_FORBIDDEN.getMessage())
         );
     }
 
@@ -74,7 +75,7 @@ public class DepositTest {
                 //объект тут = model в аргументе запроса в методе класса. Тут юзернейм, пароль и роль.
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
         //создание аккаунта от лица пользователя, которого создали на прошлом шаге
         CreateAccountResponse accountResponse = new CreateAccountRequester(
@@ -141,7 +142,7 @@ public class DepositTest {
 
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
         CreateAccountResponse accountResponse = new CreateAccountRequester(
                 RequestSpecs.authAsUser(userAuthToken),
@@ -184,7 +185,7 @@ public class DepositTest {
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
-    public void userCanNotDepositOnInvalidAccount(int accountId, String errorValue) {
+    public void userCanNotDepositOnInvalidAccount(String errorValue) {
         //создание
         CreateUserRequest createUserRequest = CreateUserRequest.builder()
                 .username(RandomData.getUserName())
@@ -204,12 +205,37 @@ public class DepositTest {
                 //объект тут = model в аргументе запроса в методе класса. Тут юзернейм, пароль и роль.
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
+        //создание 2го пользователя
+        CreateUserRequest createSecondUserRequest = CreateUserRequest.builder()
+                .username(RandomData.getUserName())
+                .password(RandomData.getUserPassword())
+                .role(UserRole.USER.toString())
+                .build();
+
+        //создание нового пользователя с админской учетки и сохранение его токена
+        String secondUserAuthToken = new AdminCreateUserRequester(
+                RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated()
+        )
+                .post(createSecondUserRequest)
+                .extract()
+                .header(HttpHeaders.AUTHORIZATION);
+
+        //создание аккаунта второму пользователю
+        int secondUserAccountId = new CreateAccountRequester(
+                RequestSpecs.authAsUser(secondUserAuthToken),
+                ResponseSpecs.entityWasCreated()
+        )
+                .post()
+                .extract()
+                .body()
+                .path("id");
 
         //создаем объект запроса на депозит
         DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(accountId)
+                .id(secondUserAccountId)
                 .balance(randomBalance)
                 .build();
 
@@ -219,5 +245,22 @@ public class DepositTest {
                 ResponseSpecs.requestReturnsForbidden(errorValue)
         )
                 .post(depositMoneyRequest);
+
+        //проверяем акк 2го пользователя, убеждаемся что баланс не изменился
+        GetUserAccountsResponse[] accounts = new GetAccountsRequester(
+                RequestSpecs.authAsUser(secondUserAuthToken),
+                ResponseSpecs.requestReturnsOK()
+        )
+                .get()
+                .extract()
+                .body()
+                .as(GetUserAccountsResponse[].class);
+
+
+        BigDecimal expectedBalance = new BigDecimal("0.00");
+        BigDecimal balanceAfterDeposit = getAccountBalance(accounts, secondUserAccountId);
+
+        assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
+
     }
 }

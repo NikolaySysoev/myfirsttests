@@ -8,19 +8,21 @@ import models.requests.TransferMoneyRequest;
 import models.responses.CreateAccountResponse;
 import models.responses.DepositMoneyResponse;
 import models.responses.GetUserAccountsResponse;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.*;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static iteration2.TestUtils.getAccountBalance;
+import static iteration2.TestUtils.repeat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TransferTests extends BaseTest {
@@ -31,15 +33,7 @@ public class TransferTests extends BaseTest {
     private long receiverAccountId;
     private BigDecimal senderAccountBalanceAfterSetup;
     private BigDecimal receiverAccountBalanceAfterSetup;
-
-    //хэлпер для получения баланса пользователя
-    private BigDecimal getAccountBalance(GetUserAccountsResponse[] accounts, long accountId) {
-        return Arrays.stream(accounts)
-                .filter(acc -> acc.getId() == accountId)
-                .map(GetUserAccountsResponse::getBalance)
-                .findFirst()
-                .orElseThrow();
-    }
+    private static final BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1, 3));
 
     @BeforeEach
     public void setup() {
@@ -58,7 +52,7 @@ public class TransferTests extends BaseTest {
 
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
         //создаем 1 счет
         var firstAccountResponse = new CreateAccountRequester(
@@ -91,7 +85,7 @@ public class TransferTests extends BaseTest {
                 .build();
 
         //депозитим для будущих трансферов (3 депозита)
-        for (int i = 0; i < 3; i++) {
+        repeat(3, () ->
             new DepositMoneyRequester(
                     RequestSpecs.authAsUser(userAuthToken),
                     ResponseSpecs.requestReturnsOK()
@@ -99,8 +93,8 @@ public class TransferTests extends BaseTest {
                     .post(depositMoneyRequest)
                     .extract()
                     .body()
-                    .as(DepositMoneyResponse.class);
-        }
+                    .as(DepositMoneyResponse.class)
+        );
 
         //получаем счета пользователя
         var userAccounts = new GetAccountsRequester(
@@ -129,9 +123,15 @@ public class TransferTests extends BaseTest {
 
     public static Stream<Arguments> invalidAmount() {
         return Stream.of(
-                Arguments.of(new BigDecimal("10000.01"), "Transfer amount cannot exceed 10000"),
-                Arguments.of(new BigDecimal("0"), "Transfer amount must be at least 0.01"),
-                Arguments.of(new BigDecimal("-0.01"), "Transfer amount must be at least 0.01")
+                Arguments.of(new BigDecimal("10000.01"), ApiError.TRANSFER_HIGHER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("0"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage()),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage())
+        );
+    }
+
+    public static Stream<Arguments> insufficientFundsData() {
+        return Stream.of(
+                Arguments.of(randomBalance, ApiError.TRANSFER_INSUFFICIENT_FUNDS.getMessage())
         );
     }
 
@@ -239,7 +239,7 @@ public class TransferTests extends BaseTest {
 
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
 
         //создаем аккаунт второму пользователя
@@ -323,7 +323,7 @@ public class TransferTests extends BaseTest {
 
                 .post(createUserRequest)
                 .extract()
-                .header("authorization");
+                .header(HttpHeaders.AUTHORIZATION);
 
         //создаем счет второму пользователю
         CreateAccountResponse secondUserAccountResponse = new CreateAccountRequester(
@@ -350,7 +350,7 @@ public class TransferTests extends BaseTest {
         )
                 .post(transferMoneyRequest);
 
-    //получаем счета 1 пользователя
+        //получаем счета 1 пользователя
         var userAccounts = new GetAccountsRequester(
                 RequestSpecs.authAsUser(userAuthToken),
                 ResponseSpecs.requestReturnsOK()
@@ -391,9 +391,7 @@ public class TransferTests extends BaseTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "100, Invalid transfer: insufficient funds or invalid accounts"
-    })
+    @MethodSource("insufficientFundsData")
     public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, String errorValue) {
         //готовим данные для трансфера
         //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
