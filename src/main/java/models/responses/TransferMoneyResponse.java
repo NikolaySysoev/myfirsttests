@@ -15,6 +15,6 @@ import java.math.BigDecimal;
 public class TransferMoneyResponse extends BaseModel {
     String message;
     BigDecimal amount;
-    String receiverAccountId;
-    String senderAccountId;
+    long receiverAccountId;
+    long senderAccountId;
 }

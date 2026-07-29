@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import models.BaseModel;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class DepositMoneyResponse {
+public class DepositMoneyResponse extends BaseModel {
     private long id;
     private String accountNumber;
     private BigDecimal balance;

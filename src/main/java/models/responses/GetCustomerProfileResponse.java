@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import models.BaseModel;
 
 import java.util.List;
 
@@ -11,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class GetUserProfileResponse {
+public class GetCustomerProfileResponse extends BaseModel {
     private long id;
     private String username;
     private String password;
