@@ -1,6 +1,7 @@
 package iteration2;
 
 import generators.RandomData;
+import models.ApiError;
 import models.UserRole;
 import models.requests.ChangeNameRequest;
 import models.requests.CreateUserRequest;
