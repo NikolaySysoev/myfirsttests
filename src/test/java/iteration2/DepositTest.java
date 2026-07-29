@@ -1,5 +1,6 @@
 package iteration2;
 
+import models.ApiError;
 import models.assertions.ModelAssertions;
 import models.requests.DepositMoneyRequest;
 import models.responses.DepositMoneyResponse;
