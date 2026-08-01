@@ -6,7 +6,9 @@ Testuser1!
  */
 
 import com.codeborne.selenide.*;
+import generators.RandomData;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class DepositTest {
-    private final BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1, 3));
+    private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
     private final BigDecimal invalidBalance = new BigDecimal("5001");
     private String accountNumber;
     private String accountId;
@@ -79,31 +81,38 @@ public class DepositTest {
 //        );
     }
 
+    @AfterEach
+    public void tearDown() {
+        Selenide.cookies().clear();
+        Selenide.executeJavaScript("localStorage.clear();");
+        Selenide.open("about:blank");
+    }
+
     @Test
     public void userCanDepositOnAccount() {
         // клик по кнопке Deposit Money + проверка перехода на нужный экран
         $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).shouldBe(Condition.visible);
-
-        // клик по выпадающему меню
-        SelenideElement accountSelector = $("select.account-selector");
+        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
 
         // выбор 1го счета из доступных
+        SelenideElement accountSelector = $("select.account-selector");
         accountSelector.selectOption(1);
 
         // заполнение инпут поля Enter Amount
         SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
         amountInput.clear();
         amountInput.setValue(String.valueOf(randomBalance));
+        amountInput.shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
 
         // клик по кнопке Deposit
         $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
 
         Alert alert = Selenide.switchTo().alert();
-
-        // Проверка на UI через сообщение в Allert
-        assertEquals(alert.getText(), "✅ Successfully deposited $" + randomBalance + " to account " + accountNumber + "!");
+        String alertText = alert.getText();
         alert.accept();
+
+        // Проверка на UI через сообщение в Alert
+        assertEquals("✅ Successfully deposited $" + randomBalance + " to account " + accountNumber + "!", alertText);
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);
@@ -115,27 +124,27 @@ public class DepositTest {
     public void UserCanNotDepositOnAccount() {
         // клик по кнопке Deposit Money + проверка перехода на нужный экран
         $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).shouldBe(Condition.visible);
-
-        // клик по выпадающему меню
-        SelenideElement accountSelector = $("select.account-selector");
+        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
 
         // выбор 1го счета из доступных
+        SelenideElement accountSelector = $("select.account-selector");
         accountSelector.selectOption(1);
 
         // заполнение инпут поля Enter Amount
         SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
         amountInput.clear();
         amountInput.setValue(String.valueOf(invalidBalance));
+        amountInput.shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
 
         // клик по кнопке Deposit
         $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
 
         Alert alert = Selenide.switchTo().alert();
+        String alertText = alert.getText();
+        alert.accept();
 
         // Проверка на UI через сообщение в Allert
-        assertEquals(alert.getText(), "❌ Please deposit less or equal to 5000$.");
-        alert.accept();
+        assertEquals("❌ Please deposit less or equal to 5000$.", alertText);
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);

@@ -1,5 +1,6 @@
 package iteration2.api;
 
+import generators.RandomData;
 import models.ApiError;
 import models.assertions.ModelAssertions;
 import models.requests.DepositMoneyRequest;
@@ -31,7 +32,7 @@ public class DepositTest {
     private long userAccountId;
     private String username;
     private String password;
-    BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1,3));
+    private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
 
     @BeforeEach
     public void setup() {

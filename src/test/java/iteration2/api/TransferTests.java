@@ -1,5 +1,6 @@
 package iteration2.api;
 
+import generators.RandomData;
 import iteration2.BaseTest;
 import models.ApiError;
 import models.assertions.ModelAssertions;
@@ -33,7 +34,7 @@ public class TransferTests extends BaseTest {
     private BigDecimal receiverAccountBalanceAfterSetup;
     private String username;
     private String password;
-    private static final BigDecimal randomBalance = new BigDecimal(RandomStringUtils.randomNumeric(1, 3));
+    private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
 
     @BeforeEach
     public void setup() {
