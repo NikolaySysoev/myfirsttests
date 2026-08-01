@@ -1,5 +1,6 @@
-package iteration2;
+package iteration2.api;
 
+import iteration2.BaseTest;
 import models.ApiError;
 import models.assertions.ModelAssertions;
 import models.requests.TransferMoneyRequest;
