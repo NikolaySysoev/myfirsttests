@@ -1,10 +1,5 @@
 package iteration2.ui;
 
-/*
-Testuser1
-Testuser1!
- */
-
 import com.codeborne.selenide.*;
 import generators.RandomData;
 import org.junit.jupiter.api.AfterEach;
