@@ -17,9 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class UpdateProfileNameTest {
+    private final String NEW_VALID_NAME = "Valid Name";
+    private final String NEW_INVALID_NAME = "newInvalidName";
+
     private String userInitialName;
-    private String newValidName = "Valid Name";
-    private String newInvalidName = "newInvalidName";
     private String username;
     private String password;
 
@@ -71,13 +72,13 @@ public class UpdateProfileNameTest {
     public void UserCanChangeName() {
         // Клик по логину --> переход на страницу смены имены
         $(Selectors.byText(username)).click();
-        $(Selectors.byText("✏\uFE0F Edit Profile")).shouldBe(Condition.visible);
+        $(Selectors.byText("✏️ Edit Profile")).shouldBe(Condition.visible);
         $(Selectors.byText("\uD83D\uDCBE Save Changes")).shouldBe(Condition.visible);
 
         // Заполение поля Enter New name
         SelenideElement newNameInput = $(Selectors.byAttribute("placeholder", "Enter new name"));
         newNameInput.clear();
-        newNameInput.setValue(newValidName);
+        newNameInput.setValue(NEW_VALID_NAME);
 
         // Клик по Save Changes
         $(Selectors.byText("\uD83D\uDCBE Save Changes")).click();
@@ -90,20 +91,20 @@ public class UpdateProfileNameTest {
 
         // Проверка на API
         String actualUserName = UserSteps.getCustomerProfile(username, password).getName();
-        assertEquals(newValidName, actualUserName);
+        assertEquals(NEW_VALID_NAME, actualUserName);
     }
 
     @Test
     public void userCanNotChangeNameWhenInvalidNewName() {
         // Клик по логину --> переход на страницу смены имены
         $(Selectors.byText(username)).click();
-        $(Selectors.byText("✏\uFE0F Edit Profile")).shouldBe(Condition.visible);
+        $(Selectors.byText("✏️ Edit Profile")).shouldBe(Condition.visible);
         $(Selectors.byText("\uD83D\uDCBE Save Changes")).shouldBe(Condition.visible);
 
         // Заполение поля Enter New name
         SelenideElement newNameInput = $(Selectors.byAttribute("placeholder", "Enter new name"));
         newNameInput.clear();
-        newNameInput.setValue(newInvalidName);
+        newNameInput.setValue(NEW_INVALID_NAME);
 
         // Клик по Save Changes
         $(Selectors.byText("\uD83D\uDCBE Save Changes")).click();
@@ -116,7 +117,7 @@ public class UpdateProfileNameTest {
 
         // Проверка на API
         String actualUserName = UserSteps.getCustomerProfile(username, password).getName();
-        assertNotEquals(newInvalidName, actualUserName);
+        assertNotEquals(NEW_INVALID_NAME, actualUserName);
         assertEquals(userInitialName, actualUserName);
     }
 }
