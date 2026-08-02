@@ -7,7 +7,6 @@ Testuser1!
 
 import com.codeborne.selenide.*;
 import generators.RandomData;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,8 @@ import requests.steps.UserSteps;
 import java.math.BigDecimal;
 import java.util.Map;
 
-import static com.codeborne.selenide.Selenide.*;
+import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -126,7 +126,7 @@ public class DepositTest {
         $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
         $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
 
-        // выбор 1го счета из доступных
+        // выбор 1го счета из доступных (единственный доступный, поэтому можно через selectOption)
         SelenideElement accountSelector = $("select.account-selector");
         accountSelector.selectOption(1);
 
