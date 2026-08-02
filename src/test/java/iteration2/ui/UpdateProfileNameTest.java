@@ -32,7 +32,7 @@ public class UpdateProfileNameTest {
         Configuration.browserSize = "1920x1080";
 
         Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true, "enablevideo", true)
+                Map.of("enableVNC", true, "enableLog", true, "enablevideo", false)
         );
     }
 
