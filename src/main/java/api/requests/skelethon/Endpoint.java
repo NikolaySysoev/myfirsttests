@@ -1,12 +1,10 @@
 package api.requests.skelethon;
 
+import api.models.BaseModel;
 import api.models.requests.*;
 import api.models.responses.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import api.models.BaseModel;
-import models.requests.*;
-import models.responses.*;
 
 @Getter
 @AllArgsConstructor
