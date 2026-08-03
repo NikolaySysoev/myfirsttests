@@ -1,14 +1,16 @@
 package iteration2.ui;
 
 import com.codeborne.selenide.*;
-import generators.RandomData;
+import api.generators.RandomData;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import ui.pages.DepositPage;
+import ui.pages.UserDashboardPage;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -66,14 +68,6 @@ public class DepositTest {
         accountNumber = account.replaceAll(" ", "").split(":")[1];
         accountId = accountNumber.replaceAll("\\D", "");
         alert.accept();
-
-
-//        repeat(2, () -> {
-//                    $(Selectors.byText("➕ Create New Account")).click();
-//                    Alert alert = Selenide.switchTo().alert();
-//                    alert.accept();
-//                }
-//        );
     }
 
     @AfterEach
@@ -86,8 +80,16 @@ public class DepositTest {
     @Test
     public void userCanDepositOnAccount() {
         // клик по кнопке Deposit Money + проверка перехода на нужный экран
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
+        var userDashboardPage = new UserDashboardPage();
+        var depositPage = new DepositPage();
+
+        userDashboardPage.open()
+                .clickDepositButton()
+                .getPage(DepositPage.class)
+                .getDepositButton().shouldBe(Condition.visible);
+
+//        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
+//        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
 
         // выбор 1го счета из доступных
         SelenideElement accountSelector = $("select.account-selector");
@@ -100,7 +102,7 @@ public class DepositTest {
         amountInput.shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
 
         // клик по кнопке Deposit
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
+        depositPage.clickDepositButton();
 
         Alert alert = Selenide.switchTo().alert();
         String alertText = alert.getText();

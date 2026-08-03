@@ -1,23 +1,22 @@
 package iteration2.api;
 
-import generators.RandomData;
+import api.generators.RandomData;
 import iteration2.BaseTest;
-import models.ApiError;
-import models.assertions.ModelAssertions;
-import models.requests.TransferMoneyRequest;
-import models.responses.TransferMoneyResponse;
-import org.apache.commons.lang3.RandomStringUtils;
+import api.models.ApiError;
+import api.models.assertions.ModelAssertions;
+import api.models.requests.TransferMoneyRequest;
+import api.models.responses.TransferMoneyResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.skelethon.requesters.ValidatedCrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.stream.Stream;

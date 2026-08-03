@@ -1,15 +1,15 @@
 package iteration2.ui;
 
 import com.codeborne.selenide.*;
-import generators.RandomData;
+import api.generators.RandomData;
 import iteration2.TestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

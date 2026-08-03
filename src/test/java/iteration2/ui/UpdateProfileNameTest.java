@@ -6,8 +6,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
 
 import java.util.Map;
 

@@ -1,6 +1,6 @@
 package iteration2;
 
-import models.responses.GetUserAccountsResponse;
+import api.models.responses.GetUserAccountsResponse;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
