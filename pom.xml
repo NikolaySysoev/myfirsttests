@@ -18,6 +18,7 @@
         <jackson.version>2.20.1</jackson.version>
         <asserj.version>3.27.7</asserj.version>
         <generex.version>1.0.2</generex.version>
+        <selenide.version>7.17.0</selenide.version>
     </properties>
 
     <dependencies>
@@ -69,6 +70,14 @@
             <groupId>com.github.mifmif</groupId>
             <artifactId>generex</artifactId>
             <version>${generex.version}</version>
+        </dependency>
+
+        <!-- Selenide -->
+        <dependency>
+            <groupId>com.codeborne</groupId>
+            <artifactId>selenide</artifactId>
+            <version>${selenide.version}</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
