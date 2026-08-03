@@ -22,7 +22,7 @@ public class DepositTest {
     private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
     private final BigDecimal invalidBalance = new BigDecimal("5001");
     private String accountNumber;
-    private String accountId;
+    private long accountId;
     private String username;
     private String password;
 
@@ -60,20 +60,9 @@ public class DepositTest {
         $(Selectors.byText("User Dashboard")).shouldBe(Condition.visible);
 
         //6 - создаем аккаунт
-        $(Selectors.byText("➕ Create New Account")).click();
-        Alert alert = Selenide.switchTo().alert();
-        String account = alert.getText();
-        accountNumber = account.replaceAll(" ", "").split(":")[1];
-        accountId = accountNumber.replaceAll("\\D", "");
-        alert.accept();
-
-
-//        repeat(2, () -> {
-//                    $(Selectors.byText("➕ Create New Account")).click();
-//                    Alert alert = Selenide.switchTo().alert();
-//                    alert.accept();
-//                }
-//        );
+        var userAccount = UserSteps.createAccount(username, password);
+        accountNumber = userAccount.getAccountNumber();
+        accountId = userAccount.getId();
     }
 
     @AfterEach
@@ -111,7 +100,7 @@ public class DepositTest {
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);
-        var userBalance = UserSteps.getAccountBalance(userAccount, Long.parseLong(accountId));
+        var userBalance = UserSteps.getAccountBalance(userAccount, accountId);
         assertEquals(0, randomBalance.compareTo(userBalance));
     }
 
@@ -143,7 +132,7 @@ public class DepositTest {
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);
-        var userBalance = UserSteps.getAccountBalance(userAccount, Long.parseLong(accountId));
+        var userBalance = UserSteps.getAccountBalance(userAccount, accountId);
         assertNotEquals(0, invalidBalance.compareTo(userBalance));
     }
 }
