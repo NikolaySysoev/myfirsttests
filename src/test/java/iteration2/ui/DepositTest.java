@@ -81,7 +81,7 @@ public class DepositTest {
         var depositPage = new DepositPage();
 
         userDashboardPage.open()
-                .clickDepositButton()
+                .click("depositMoneyButton")
                 .getPage(DepositPage.class)
                 .getDepositButton().shouldBe(Condition.visible);
 
