@@ -16,7 +16,7 @@ public abstract class BasePage<T extends BasePage> {
 
     public abstract String url();
 
-    public  T open() {
+    public T open() {
         return Selenide.open(url(), (Class<T>) this.getClass());
     }
 
@@ -37,16 +37,35 @@ public abstract class BasePage<T extends BasePage> {
     /**
      * Finds a SelenideElement field by its name using reflection.
      *
-     * @param elementName field name declared in the page object class
+     * @param elementName field name declared in the page object class or its superclass (BasePage)
      * @return the SelenideElement stored in that field
      * @throws IllegalArgumentException if no such field exists in the class
-     * @throws RuntimeException if the field is not accessible
+     * @throws RuntimeException         if the field is not accessible
      */
     private SelenideElement getElement(String elementName) {
+        Class<?> clazz = this.getClass();
+        Field field = null;
+
+        // поднимаемся по иерархии, пока не найдём поле или не упрёмся в Object
+        while (clazz != null) {
+            try {
+                field = clazz.getDeclaredField(elementName);
+                break;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+
+        if (field == null) {
+            throw new IllegalArgumentException(
+                    "Field '" + elementName + "' not found in class "
+                            + this.getClass().getSimpleName() + " or its superclasses"
+            );
+        }
+
         try {
-            Field field = this.getClass().getDeclaredField(elementName);
             field.setAccessible(true);
-            Object value = field.get(this); //value = locator
+            Object value = field.get(this);
 
             if (!(value instanceof SelenideElement)) {
                 throw new IllegalStateException(
@@ -56,14 +75,8 @@ public abstract class BasePage<T extends BasePage> {
 
             return (SelenideElement) value;
 
-        } catch (NoSuchFieldException e) {
-            throw new IllegalArgumentException(
-                    "Field '" + elementName + "' not found in class " + this.getClass().getSimpleName(), e
-            );
         } catch (IllegalAccessException e) {
-            throw new RuntimeException(
-                    "No access to field '" + elementName + "'", e
-            );
+            throw new RuntimeException("No access to field '" + elementName + "'", e);
         }
     }
 };
