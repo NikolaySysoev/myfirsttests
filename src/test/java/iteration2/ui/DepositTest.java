@@ -28,6 +28,9 @@ public class DepositTest {
     private String username;
     private String password;
 
+    UserDashboardPage userDashboardPage = new UserDashboardPage();
+    DepositPage depositPage = new DepositPage();
+
     @BeforeAll
     public static void setupSelenoid() {
         Configuration.remote = "http://localhost:4444/wd/hub";
@@ -77,29 +80,19 @@ public class DepositTest {
     @Test
     public void userCanDepositOnAccount() {
         // клик по кнопке Deposit Money + проверка перехода на нужный экран
-        var userDashboardPage = new UserDashboardPage();
-        var depositPage = new DepositPage();
-
         userDashboardPage.open()
                 .click("depositMoneyButton")
                 .getPage(DepositPage.class)
                 .getDepositButton().shouldBe(Condition.visible);
 
-//        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-//        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
-
-        // выбор 1го счета из доступных
-        SelenideElement accountSelector = $("select.account-selector");
-        accountSelector.selectOption(1);
-
-        // заполнение инпут поля Enter Amount
-        SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
-        amountInput.clear();
-        amountInput.setValue(String.valueOf(randomBalance));
-        amountInput.shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
+        // выбор 1го счета из доступных и заполнение суммы
+        depositPage.open()
+                .chooseAccount(1)
+                .setValue("amountInput", String.valueOf(randomBalance))
+                .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
 
         // клик по кнопке Deposit
-        depositPage.clickDepositButton();
+        depositPage.click("depositButton");
 
         Alert alert = Selenide.switchTo().alert();
         String alertText = alert.getText();
@@ -117,21 +110,19 @@ public class DepositTest {
     @Test
     public void UserCanNotDepositOnAccount() {
         // клик по кнопке Deposit Money + проверка перехода на нужный экран
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
+        userDashboardPage.open()
+                .click("depositMoneyButton")
+                .getPage(DepositPage.class)
+                .getDepositButton().shouldBe(Condition.visible);
 
-        // выбор 1го счета из доступных (единственный доступный, поэтому можно через selectOption)
-        SelenideElement accountSelector = $("select.account-selector");
-        accountSelector.selectOption(1);
-
-        // заполнение инпут поля Enter Amount
-        SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
-        amountInput.clear();
-        amountInput.setValue(String.valueOf(invalidBalance));
-        amountInput.shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
+        // выбор 1го счета из доступных и заполнение суммы
+        depositPage.open()
+                .chooseAccount(1)
+                .setValue("amountInput", String.valueOf(invalidBalance))
+                .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
 
         // клик по кнопке Deposit
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
+        depositPage.click("depositButton");
 
         Alert alert = Selenide.switchTo().alert();
         String alertText = alert.getText();
