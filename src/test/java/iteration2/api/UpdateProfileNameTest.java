@@ -1,6 +1,5 @@
 package iteration2.api;
 
-import iteration2.BaseTest;
 import api.models.ApiError;
 import api.models.assertions.ModelAssertions;
 import api.models.requests.ChangeNameRequest;

@@ -28,7 +28,7 @@ public class RequestSpecs {
                 .addFilters(List.of(
                         new RequestLoggingFilter(),
                         new ResponseLoggingFilter()))
-                .setBaseUri(Config.getProperty("server") + Config.getProperty("apiVersion"));
+                .setBaseUri(Config.getProperty("apiBaseUrl") + Config.getProperty("apiVersion"));
     }
 
     public static RequestSpecification unAuthSpec() {
@@ -43,6 +43,18 @@ public class RequestSpecs {
     }
 
     public static RequestSpecification authAsUser(String username, String password) {
+        return defaultRequestBuilder()
+                .addHeader(HttpHeaders.AUTHORIZATION, getUserAuthHeader(username, password))
+                .build();
+    }
+
+    public static RequestSpecification authAsUser(String userAuthHeader) {
+        return defaultRequestBuilder()
+                .addHeader(HttpHeaders.AUTHORIZATION, userAuthHeader)
+                .build();
+    }
+
+    public static String getUserAuthHeader(String username, String password) {
         String userAuthHeader;
 
         if (!authHeaders.containsKey(username)) {
@@ -60,14 +72,6 @@ public class RequestSpecs {
             userAuthHeader = authHeaders.get(username);
         }
 
-        return defaultRequestBuilder()
-                .addHeader(HttpHeaders.AUTHORIZATION, userAuthHeader)
-                .build();
-    }
-
-    public static RequestSpecification authAsUser(String userAuthHeader) {
-        return defaultRequestBuilder()
-                .addHeader(HttpHeaders.AUTHORIZATION, userAuthHeader)
-                .build();
+        return userAuthHeader;
     }
 }

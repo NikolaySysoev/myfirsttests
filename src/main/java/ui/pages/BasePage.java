@@ -1,9 +1,12 @@
 package ui.pages;
 
+import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import lombok.Getter;
+import org.openqa.selenium.Alert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.reflect.Field;
 
@@ -11,8 +14,9 @@ import static com.codeborne.selenide.Selenide.$;
 
 @Getter
 public abstract class BasePage<T extends BasePage> {
-    private SelenideElement userName = $(Selectors.byClassName("user-username"));
-    private SelenideElement userLogin = $(Selectors.byClassName("user-name"));
+    protected SelenideElement userName = $(Selectors.byClassName("user-username"));
+    protected SelenideElement userLogin = $(Selectors.byClassName("user-name"));
+    private SelenideElement accountSelector = $("select.account-selector");
 
     public abstract String url();
 
@@ -30,7 +34,11 @@ public abstract class BasePage<T extends BasePage> {
     }
 
     public T setValue(String elementName, String value) {
-        getElement(elementName).setValue(value);
+        SelenideElement element= getElement(elementName);
+        element.clear();
+        element.click();
+        element.setValue(value);
+        element.shouldHave(Condition.exactValue(value));
         return (T) this;
     }
 
@@ -78,5 +86,23 @@ public abstract class BasePage<T extends BasePage> {
         } catch (IllegalAccessException e) {
             throw new RuntimeException("No access to field '" + elementName + "'", e);
         }
+    }
+
+    public T checkAlertMessageAndAccept(String alertMessage){
+        Alert alert = Selenide.switchTo().alert();
+        String alertText = alert.getText();
+        alert.accept();
+        assertEquals(alertMessage, alertText);
+        return (T) this;
+    }
+
+    public T chooseFirstAvailableAccount() {
+        accountSelector.selectOption(1);
+        return (T) this;
+    }
+
+    public T chooseAccount(long accountId) {
+        accountSelector.selectOptionContainingText(String.valueOf(accountId));
+        return (T) this;
     }
 };
