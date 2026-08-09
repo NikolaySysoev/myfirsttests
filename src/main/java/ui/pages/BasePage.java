@@ -1,11 +1,15 @@
 package ui.pages;
 
+import api.models.requests.CreateUserRequest;
+import api.specs.RequestSpecs;
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import lombok.Getter;
 import org.openqa.selenium.Alert;
+
+import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.reflect.Field;
@@ -26,6 +30,16 @@ public abstract class BasePage<T extends BasePage> {
 
     public <T extends BasePage> T getPage(Class<T> pageClass) {
         return Selenide.page(pageClass);
+    }
+
+    public static void putUserTokenInLocalStorage(String username, String password) {
+        Selenide.open("/login");
+        String authToken = RequestSpecs.getUserAuthHeader(username,password);
+        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", authToken);
+    }
+
+    public static void putUserTokenInLocalStorage(CreateUserRequest createUserRequest) {
+        putUserTokenInLocalStorage(createUserRequest.getUsername(), createUserRequest.getPassword());
     }
 
     public T click(SelenideElement element) {

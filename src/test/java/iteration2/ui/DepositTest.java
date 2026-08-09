@@ -1,10 +1,10 @@
 package iteration2.ui;
 
 import api.generators.RandomData;
-import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selenide;
+import common.annotations.UserSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,15 +27,7 @@ public class DepositTest extends BaseUiTest {
 
     @BeforeEach
     public void setup() {
-        //1 - админ создает пользователя
-        var userData = AdminSteps.createUser();
-
-        username = userData.getUsername();
-        password = userData.getPassword();
-
-        putUserTokenInLocalStorage(username, password);
-
-        // создаем аккаунт
+        // создаем аккаунт пользователю, который генерится в UserSessionExtension
         var userAccount = UserSteps.createAccount(username, password);
         accountNumber = userAccount.getAccountNumber();
         accountId = userAccount.getId();
@@ -49,6 +41,7 @@ public class DepositTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void userCanDepositOnAccount() {
         String expectedAlertText = BankAlerts.USER_DEPOSIT_SUCCESS.format(randomBalance, accountNumber);
 
@@ -69,6 +62,7 @@ public class DepositTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void userCannotDepositOnAccount() {
         // выбор 1го счета из доступных и заполнение суммы
         depositPage.open()

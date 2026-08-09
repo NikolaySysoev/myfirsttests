@@ -18,6 +18,13 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 
 public class UserSteps {
+    private String username;
+    private String password;
+
+    public UserSteps(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
 
     public static String loginUser(CreateUserRequest userRequest) {
         var loginRequest = LoginRequest.builder()

@@ -1,9 +1,9 @@
 package iteration2.ui;
 
 import api.generators.RandomData;
-import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Selenide;
+import common.annotations.UserSession;
 import iteration2.TestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,15 +38,7 @@ public class TransferTest extends BaseUiTest {
 
     @BeforeEach
     public void Setup() {
-        // админ создает пользователя
-        var userData = AdminSteps.createUser();
-
-        username = userData.getUsername();
-        password = userData.getPassword();
-
-        putUserTokenInLocalStorage(username,password);
-
-        // создаем 2 аккаунта
+        // создаем 2 аккаунта пользователю, который генерится в UserSessionExtension
         repeat(2, () -> {
             var userAccount = UserSteps.createAccount(username, password);
             userAccountsNumbers.add(userAccount.getAccountNumber());
@@ -73,6 +65,7 @@ public class TransferTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void UserCanTransfer() {
         String expectedAlert = BankAlerts.USER_TRANSFER_SUCCESS.format(randomBalance, userAccountsNumbers.get(1));
 
@@ -92,6 +85,7 @@ public class TransferTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void UserCanNotTransferWhenEmptyFields() {
         transferPage.open()
                 .chooseAccount(senderAccountId)
@@ -109,6 +103,7 @@ public class TransferTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void UserCanNotTransferWhenInvalidRecipientAccount() {
         transferPage.open()
                 .chooseAccount(senderAccountId)
@@ -126,6 +121,7 @@ public class TransferTest extends BaseUiTest {
     }
 
     @Test
+    @UserSession
     public void UserCanNotTransferWhenInvalidAmount() {
         transferPage.open()
                 .chooseAccount(senderAccountId)

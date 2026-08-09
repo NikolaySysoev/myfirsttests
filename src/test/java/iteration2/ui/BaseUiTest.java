@@ -1,16 +1,14 @@
 package iteration2.ui;
 
-import api.models.requests.CreateUserRequest;
-import api.specs.RequestSpecs;
 import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selenide;
+import common.extensions.UserSessionExtension;
 import iteration2.api.BaseTest;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Map;
 
-import static com.codeborne.selenide.Selenide.executeJavaScript;
-
+@ExtendWith(UserSessionExtension.class)
 public class BaseUiTest extends BaseTest {
 
     @BeforeAll
@@ -25,13 +23,4 @@ public class BaseUiTest extends BaseTest {
         );
     }
 
-    public void putUserTokenInLocalStorage(String username, String password) {
-        Selenide.open("/login");
-        String authToken = RequestSpecs.getUserAuthHeader(username,password);
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", authToken);
-    }
-
-    public void putUserTokenInLocalStorage(CreateUserRequest createUserRequest) {
-        putUserTokenInLocalStorage(createUserRequest.getUsername(), createUserRequest.getPassword());
-    }
 }

@@ -1,8 +1,8 @@
 package iteration2.ui;
 
-import api.requests.steps.AdminSteps;
 import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Selenide;
+import common.annotations.UserSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,14 +24,6 @@ public class UpdateProfileNameTest extends BaseUiTest{
 
     @BeforeEach
     public void Setup() {
-        // админ создает пользователя
-        var userData = AdminSteps.createUser();
-
-        username = userData.getUsername();
-        password = userData.getPassword();
-
-        putUserTokenInLocalStorage(username, password);
-
         userInitialName = UserSteps.getCustomerProfile(username, password).getName();
     }
 
@@ -43,6 +35,7 @@ public class UpdateProfileNameTest extends BaseUiTest{
     }
 
     @Test
+    @UserSession
     public void UserCanChangeName() {
         editProfilePage.open()
                 .setValue(editProfilePage.getNewNameInput(), NEW_VALID_NAME)
@@ -55,6 +48,7 @@ public class UpdateProfileNameTest extends BaseUiTest{
     }
 
     @Test
+    @UserSession
     public void userCanNotChangeNameWhenInvalidNewName() {
         editProfilePage.open()
                 .setValue(editProfilePage.getNewNameInput(), NEW_INVALID_NAME)
