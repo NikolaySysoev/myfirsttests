@@ -1,65 +1,41 @@
 package iteration2.ui;
 
-import com.codeborne.selenide.*;
-import generators.RandomData;
+import api.generators.RandomData;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import com.codeborne.selenide.Condition;
+import com.codeborne.selenide.Selenide;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
+import ui.pages.BankAlerts;
+import ui.pages.DepositPage;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
-import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-public class DepositTest {
-    private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
+public class DepositTest extends BaseUiTest {
+    private final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
     private final BigDecimal invalidBalance = new BigDecimal("5001");
     private String accountNumber;
     private long accountId;
     private String username;
     private String password;
 
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://192.168.1.99:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true, "enablevideo", false)
-        );
-    }
+    DepositPage depositPage = new DepositPage();
 
     @BeforeEach
-    public void Setup() {
+    public void setup() {
         //1 - админ создает пользователя
         var userData = AdminSteps.createUser();
 
         username = userData.getUsername();
         password = userData.getPassword();
 
-        //2 - логин под юзер, получение токена
-        String authToken = UserSteps.loginUser(userData);
+        putUserTokenInLocalStorage(username, password);
 
-        //3 - открываем страницу логина
-        Selenide.open("/login");
-
-        //4 - вставляем токен в localStorage
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", authToken);
-
-        //5 - переход на страницу /dashboard
-        Selenide.open("/dashboard");
-        $(Selectors.byText("User Dashboard")).shouldBe(Condition.visible);
-
-        //6 - создаем аккаунт
+        // создаем аккаунт
         var userAccount = UserSteps.createAccount(username, password);
         accountNumber = userAccount.getAccountNumber();
         accountId = userAccount.getId();
@@ -74,29 +50,17 @@ public class DepositTest {
 
     @Test
     public void userCanDepositOnAccount() {
-        // клик по кнопке Deposit Money + проверка перехода на нужный экран
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
+        String expectedAlertText = BankAlerts.USER_DEPOSIT_SUCCESS.format(randomBalance, accountNumber);
 
-        // выбор 1го счета из доступных
-        SelenideElement accountSelector = $("select.account-selector");
-        accountSelector.selectOption(1);
-
-        // заполнение инпут поля Enter Amount
-        SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
-        amountInput.clear();
-        amountInput.setValue(String.valueOf(randomBalance));
-        amountInput.shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
+        // выбор 1го счета из доступных и заполнение суммы
+        depositPage.open()
+                .chooseFirstAvailableAccount()
+                .setValue(depositPage.getAmountInput(), String.valueOf(randomBalance))
+                .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
 
         // клик по кнопке Deposit
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
-
-        Alert alert = Selenide.switchTo().alert();
-        String alertText = alert.getText();
-        alert.accept();
-
-        // Проверка на UI через сообщение в Alert
-        assertEquals("✅ Successfully deposited $" + randomBalance + " to account " + accountNumber + "!", alertText);
+        depositPage.click(depositPage.getDepositButton())
+                .checkAlertMessageAndAccept(expectedAlertText);
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);
@@ -105,34 +69,20 @@ public class DepositTest {
     }
 
     @Test
-    public void UserCanNotDepositOnAccount() {
-        // клик по кнопке Deposit Money + проверка перехода на нужный экран
-        $(Selectors.byText("\uD83D\uDCB0 Deposit Money")).click();
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).shouldBe(Condition.visible);
-
-        // выбор 1го счета из доступных (единственный доступный, поэтому можно через selectOption)
-        SelenideElement accountSelector = $("select.account-selector");
-        accountSelector.selectOption(1);
-
-        // заполнение инпут поля Enter Amount
-        SelenideElement amountInput = $(Selectors.byAttribute("placeholder", "Enter amount"));
-        amountInput.clear();
-        amountInput.setValue(String.valueOf(invalidBalance));
-        amountInput.shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
+    public void userCannotDepositOnAccount() {
+        // выбор 1го счета из доступных и заполнение суммы
+        depositPage.open()
+                .chooseFirstAvailableAccount()
+                .setValue(depositPage.getAmountInput(), String.valueOf(invalidBalance))
+                .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
 
         // клик по кнопке Deposit
-        $(Selectors.byText("\uD83D\uDCB5 Deposit")).click();
-
-        Alert alert = Selenide.switchTo().alert();
-        String alertText = alert.getText();
-        alert.accept();
-
-        // Проверка на UI через сообщение в Allert
-        assertEquals("❌ Please deposit less or equal to 5000$.", alertText);
+        depositPage.click(depositPage.getDepositButton())
+                .checkAlertMessageAndAccept(BankAlerts.USER_DEPOSIT_FAIL.getMessage());
 
         // проверка на API
         var userAccount = UserSteps.getAccounts(username, password);
         var userBalance = UserSteps.getAccountBalance(userAccount, accountId);
-        assertNotEquals(0, invalidBalance.compareTo(userBalance));
+        assertEquals(0, BigDecimal.ZERO.compareTo(userBalance));
     }
 }
