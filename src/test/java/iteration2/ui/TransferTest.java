@@ -78,11 +78,11 @@ public class TransferTest extends BaseUiTest {
 
         transferPage.open()
                 .chooseAccount(senderAccountId)
-                .setValue("recipientNameInput", DEFAULT_NAME)
-                .setValue("recipientAccountInput", recipientAccountNumber)
-                .setValue("enterAmountInput", String.valueOf(randomBalance))
+                .setValue(transferPage.getRecipientNameInput(), DEFAULT_NAME)
+                .setValue(transferPage.getRecipientAccountInput(), recipientAccountNumber)
+                .setValue(transferPage.getEnterAmountInput(), String.valueOf(randomBalance))
                 .checkbox(true)
-                .click("transferButton")
+                .click(transferPage.getTransferButton())
                 .checkAlertMessageAndAccept(expectedAlert);
 
         //Проверка на API
@@ -95,11 +95,11 @@ public class TransferTest extends BaseUiTest {
     public void UserCanNotTransferWhenEmptyFields() {
         transferPage.open()
                 .chooseAccount(senderAccountId)
-                .setValue("recipientNameInput", DEFAULT_NAME)
-                .setValue("recipientAccountInput", recipientAccountNumber)
-                .setValue("enterAmountInput", String.valueOf(randomBalance))
+                .setValue(transferPage.getRecipientNameInput(), DEFAULT_NAME)
+                .setValue(transferPage.getRecipientAccountInput(), recipientAccountNumber)
+                .setValue(transferPage.getEnterAmountInput(), String.valueOf(randomBalance))
                 .checkbox(false)
-                .click("transferButton")
+                .click(transferPage.getTransferButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_EMPTY_FORM.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)
@@ -112,11 +112,11 @@ public class TransferTest extends BaseUiTest {
     public void UserCanNotTransferWhenInvalidRecipientAccount() {
         transferPage.open()
                 .chooseAccount(senderAccountId)
-                .setValue("recipientNameInput", DEFAULT_NAME)
-                .setValue("recipientAccountInput", invalidRecipientAccountId)
-                .setValue("enterAmountInput", String.valueOf(randomBalance))
+                .setValue(transferPage.getRecipientNameInput(), DEFAULT_NAME)
+                .setValue(transferPage.getRecipientAccountInput(), invalidRecipientAccountId)
+                .setValue(transferPage.getEnterAmountInput(), String.valueOf(randomBalance))
                 .checkbox(true)
-                .click("transferButton")
+                .click(transferPage.getTransferButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_INVALID_ACCOUNT.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)
@@ -129,11 +129,11 @@ public class TransferTest extends BaseUiTest {
     public void UserCanNotTransferWhenInvalidAmount() {
         transferPage.open()
                 .chooseAccount(senderAccountId)
-                .setValue("recipientNameInput", DEFAULT_NAME)
-                .setValue("recipientAccountInput", recipientAccountNumber)
-                .setValue("enterAmountInput", String.valueOf(invalidBalance))
+                .setValue(transferPage.getRecipientNameInput(), DEFAULT_NAME)
+                .setValue(transferPage.getRecipientAccountInput(), recipientAccountNumber)
+                .setValue(transferPage.getEnterAmountInput(), String.valueOf(invalidBalance))
                 .checkbox(true)
-                .click("transferButton")
+                .click(transferPage.getTransferButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_INVALID_AMOUNT_LOWER_001.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)

@@ -45,8 +45,8 @@ public class UpdateProfileNameTest extends BaseUiTest{
     @Test
     public void UserCanChangeName() {
         editProfilePage.open()
-                .setValue("newNameInput", NEW_VALID_NAME)
-                .click("saveChangesButton")
+                .setValue(editProfilePage.getNewNameInput(), NEW_VALID_NAME)
+                .click(editProfilePage.getSaveChangesButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_CHANGE_NAME_SUCCESS.getMessage());
 
         // Проверка на API
@@ -57,8 +57,8 @@ public class UpdateProfileNameTest extends BaseUiTest{
     @Test
     public void userCanNotChangeNameWhenInvalidNewName() {
         editProfilePage.open()
-                .setValue("newNameInput", NEW_INVALID_NAME)
-                .click("saveChangesButton")
+                .setValue(editProfilePage.getNewNameInput(), NEW_INVALID_NAME)
+                .click(editProfilePage.getSaveChangesButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_CHANGE_NAME_FAIL.getMessage());
 
         // Проверка на API

@@ -55,11 +55,11 @@ public class DepositTest extends BaseUiTest {
         // выбор 1го счета из доступных и заполнение суммы
         depositPage.open()
                 .chooseFirstAvailableAccount()
-                .setValue("amountInput", String.valueOf(randomBalance))
+                .setValue(depositPage.getAmountInput(), String.valueOf(randomBalance))
                 .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(randomBalance)));
 
         // клик по кнопке Deposit
-        depositPage.click("depositButton")
+        depositPage.click(depositPage.getDepositButton())
                 .checkAlertMessageAndAccept(expectedAlertText);
 
         // проверка на API
@@ -73,11 +73,11 @@ public class DepositTest extends BaseUiTest {
         // выбор 1го счета из доступных и заполнение суммы
         depositPage.open()
                 .chooseFirstAvailableAccount()
-                .setValue("amountInput", String.valueOf(invalidBalance))
+                .setValue(depositPage.getAmountInput(), String.valueOf(invalidBalance))
                 .getAmountInput().shouldHave(Condition.exactValue(String.valueOf(invalidBalance)));
 
         // клик по кнопке Deposit
-        depositPage.click("depositButton")
+        depositPage.click(depositPage.getDepositButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_DEPOSIT_FAIL.getMessage());
 
         // проверка на API
