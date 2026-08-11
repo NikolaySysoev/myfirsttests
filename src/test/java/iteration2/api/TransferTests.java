@@ -5,17 +5,17 @@ import api.models.ApiError;
 import api.models.assertions.ModelAssertions;
 import api.models.requests.TransferMoneyRequest;
 import api.models.responses.TransferMoneyResponse;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import api.requests.skelethon.Endpoint;
-import api.requests.skelethon.requesters.CrudRequester;
-import api.requests.skelethon.requesters.ValidatedCrudRequester;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.UserSteps;
-import api.specs.RequestSpecs;
-import api.specs.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.stream.Stream;
@@ -23,50 +23,36 @@ import java.util.stream.Stream;
 import static iteration2.TestUtils.repeat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TransferTests extends BaseTest {
+public class TransferTests extends BaseApiTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
 
     private long senderAccountId;
     private long receiverAccountId;
     private BigDecimal senderAccountBalanceAfterSetup;
     private BigDecimal receiverAccountBalanceAfterSetup;
-    private String username;
-    private String password;
     private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
 
     @BeforeEach
     public void setup() {
-        //создаем пользователя
-        var createUserRequest = AdminSteps.createUser();
+        // пользователь уже создан ApiUserSessionExtension'ом (по @UserSession на тестовом методе)
 
         //создание 1го аккаунта (sender)
-        var firstAccountResponse = UserSteps.createAccount(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
+        var firstAccountResponse = SessionStorage.actAsUser().createAccount();
 
         //создание 2го аккаунта (receiver)
-        var secondAccountResponse = UserSteps.createAccount(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
-        username = createUserRequest.getUsername();
-        password = createUserRequest.getPassword();
+        var secondAccountResponse = SessionStorage.actAsUser().createAccount();
 
         //вытаскиваем айдишки счетов
         senderAccountId = firstAccountResponse.getId();
         receiverAccountId = secondAccountResponse.getId();
 
         //депозитим для будущих трансферов (3 депозита)
-        repeat(3, () -> UserSteps.depositMoney(senderAccountId, DEFAULT_DEPOSIT, username, password)
-        );
-
-        var userAccounts = UserSteps.getAccounts(username, password);
+        repeat(3, () -> SessionStorage.actAsUser().depositMoney(senderAccountId, DEFAULT_DEPOSIT));
 
         //вытаскиваем баланс с первого счета
-        senderAccountBalanceAfterSetup = UserSteps.getAccountBalance(userAccounts, senderAccountId);
+        senderAccountBalanceAfterSetup = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         //вытаскиваем баланс со второго счета
-        receiverAccountBalanceAfterSetup = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
+        receiverAccountBalanceAfterSetup = SessionStorage.actAsUser().getAccountBalance(receiverAccountId);
     }
 
     public static Stream<Arguments> validAmount() {
@@ -91,6 +77,7 @@ public class TransferTests extends BaseTest {
         );
     }
 
+    @UserSession
     @ParameterizedTest
     @MethodSource("validAmount")
     public void userCanTransferBetweenOwnAccounts(BigDecimal transferAmount) {
@@ -103,7 +90,7 @@ public class TransferTests extends BaseTest {
 
         //делаем трансфер
         var transferMoneyResponse = new ValidatedCrudRequester<TransferMoneyResponse>(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsOK()
         )
@@ -111,13 +98,10 @@ public class TransferTests extends BaseTest {
 
         ModelAssertions.assertThatModels(transferMoneyRequest, transferMoneyResponse).match();
 
-        //получаем счета пользователя
-        var userAccounts = UserSteps.getAccounts(username, password);
-
         //вытаскиваем баланс с первого счета
-        BigDecimal senderAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, senderAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         //вытаскиваем баланс со второго счета
-        BigDecimal receiverAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
+        BigDecimal receiverAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(receiverAccountId);
 
         //ожидаем что на 1 счете теперь балланс стал меньше на сумму трансфера
         BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup.subtract(transferAmount);
@@ -130,6 +114,7 @@ public class TransferTests extends BaseTest {
         assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
     }
 
+    @UserSession
     @ParameterizedTest
     @MethodSource("invalidAmount")
     public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
@@ -142,19 +127,16 @@ public class TransferTests extends BaseTest {
 
         //делаем трансфер
         new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
                 .post(transferMoneyRequest);
 
-        //получаем счета пользователя
-        var userAccounts = UserSteps.getAccounts(username, password);
-
         //вытаскиваем баланс с первого счета
-        BigDecimal senderAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, senderAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         //вытаскиваем баланс со второго счета
-        BigDecimal receiverAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
+        BigDecimal receiverAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(receiverAccountId);
 
         //ожидаем что баланс 1 и 2 счета не изменились
         BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup;
@@ -166,15 +148,12 @@ public class TransferTests extends BaseTest {
         assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
     }
 
+    @UserSession(2)
     @ParameterizedTest
     @MethodSource("validAmount")
     public void userCanTransferOnOtherUserAccount(BigDecimal transferAmount) {
-        //создаем 2го пользователя, логинимся под ним, создаем счет
-        var createUserRequest = AdminSteps.createUser();
-        var secondUserAccountResponse = UserSteps.createAccount(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
+        //создаем счет второму пользователю (он уже создан и залогинен ApiUserSessionExtension'ом)
+        var secondUserAccountResponse = SessionStorage.actAsUser(2).createAccount();
 
         long receiverUserAccountId = secondUserAccountResponse.getId();
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
@@ -187,7 +166,7 @@ public class TransferTests extends BaseTest {
                 .build();
 
         var transferMoneyResponse = new ValidatedCrudRequester<TransferMoneyResponse>(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsOK()
         )
@@ -195,19 +174,10 @@ public class TransferTests extends BaseTest {
 
         ModelAssertions.assertThatModels(transferMoneyRequest, transferMoneyResponse).match();
 
-        //получаем счета 1 пользователя
-        var userAccounts = UserSteps.getAccounts(username, password);
-
-        //получаем счета 2 пользователя
-        var secondUserAccountsResponse = UserSteps.getAccounts(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
-
         //вытаскиваем баланс со счета 1го пользователя
-        BigDecimal senderAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, senderAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         //вытаскиваем баланс со счета 2го пользователя
-        BigDecimal secondAccountBalanceAfterTransfer = UserSteps.getAccountBalance(secondUserAccountsResponse, receiverUserAccountId);
+        BigDecimal secondAccountBalanceAfterTransfer = SessionStorage.actAsUser(2).getAccountBalance(receiverUserAccountId);
 
         //ожидаем что на 1 счете теперь балланс стал меньше на сумму трансфера
         BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup.subtract(transferAmount);
@@ -220,15 +190,12 @@ public class TransferTests extends BaseTest {
         assertEquals(0, secondUserExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
     }
 
+    @UserSession(2)
     @ParameterizedTest
     @MethodSource("invalidAmount")
     public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
-        //создаем 2го пользователя, логинимся под ним, создаем счет
-        var createUserRequest = AdminSteps.createUser();
-        var secondUserAccountResponse = UserSteps.createAccount(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
+        //создаем счет второму пользователю
+        var secondUserAccountResponse = SessionStorage.actAsUser(2).createAccount();
 
         long secondUserAccountId = secondUserAccountResponse.getId();
         BigDecimal secondAccountInitialBalance = secondUserAccountResponse.getBalance();
@@ -241,29 +208,20 @@ public class TransferTests extends BaseTest {
                 .build();
 
         new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_TRANSFER,
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
                 .post(transferMoneyRequest);
 
-        //получаем счета 1 пользователя
-        var userAccounts = UserSteps.getAccounts(username, password);
-
-        //получаем счета 2 пользователя
-        var secondUserAccountsResponse = UserSteps.getAccounts(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
-
         //вытаскиваем баланс со счета 1го пользователя
-        BigDecimal senderAccountBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, senderAccountId);
+        BigDecimal senderAccountBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         //вытаскиваем баланс со счета 2го пользователя
-        BigDecimal secondUserAccountBalanceAfterTransfer = UserSteps.getAccountBalance(secondUserAccountsResponse, secondUserAccountId);
+        BigDecimal secondUserAccountBalanceAfterTransfer = SessionStorage.actAsUser(2).getAccountBalance(secondUserAccountId);
 
         //ожидаем что баланс счета 1 пользователя не изменился
         BigDecimal senderAccountExpectedBalance = senderAccountBalanceAfterSetup;
-        //ожидаем что баланс счета 1 пользователя не изменился
+        //ожидаем что баланс счета 2 пользователя не изменился
         BigDecimal secondUserExpectedBalance = secondAccountInitialBalance;
 
         //првоеряем баланс 1 счета
@@ -272,35 +230,31 @@ public class TransferTests extends BaseTest {
         assertEquals(0, secondUserExpectedBalance.compareTo(secondUserAccountBalanceAfterTransfer));
     }
 
+    @UserSession
     @ParameterizedTest
     @MethodSource("insufficientFundsData")
     public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, String errorValue) {
-        {
-            //готовим данные для трансфера
-            //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
-            var transferMoneyRequest = TransferMoneyRequest.builder()
-                    .senderAccountId(receiverAccountId)
-                    .receiverAccountId(senderAccountId)
-                    .amount(transferAmount)
-                    .build();
+        //готовим данные для трансфера
+        //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
+        var transferMoneyRequest = TransferMoneyRequest.builder()
+                .senderAccountId(receiverAccountId)
+                .receiverAccountId(senderAccountId)
+                .amount(transferAmount)
+                .build();
 
-            //делаем трансфер
-            new CrudRequester(
-                    RequestSpecs.authAsUser(username, password),
-                    Endpoint.ACCOUNTS_TRANSFER,
-                    ResponseSpecs.requestReturnsBadRequest(errorValue)
-            )
-                    .post(transferMoneyRequest);
+        //делаем трансфер
+        new CrudRequester(
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
+                Endpoint.ACCOUNTS_TRANSFER,
+                ResponseSpecs.requestReturnsBadRequest(errorValue)
+        )
+                .post(transferMoneyRequest);
 
-            //получаем счета пользователя
-            var userAccounts = UserSteps.getAccounts(username, password);
+        //вытаскиваем баланс со второго счета
+        BigDecimal receiverBalanceAfterTransfer = SessionStorage.actAsUser().getAccountBalance(receiverAccountId);
+        BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
 
-            //вытаскиваем баланс со второго счета
-            BigDecimal receiverBalanceAfterTransfer = UserSteps.getAccountBalance(userAccounts, receiverAccountId);
-            BigDecimal expectedBalance = receiverAccountBalanceAfterSetup;
-
-            //проверяем баланс 2 счета
-            assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
-        }
+        //проверяем баланс 2 счета
+        assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
     }
 }

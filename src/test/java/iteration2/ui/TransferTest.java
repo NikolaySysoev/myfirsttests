@@ -1,11 +1,8 @@
 package iteration2.ui;
 
 import api.generators.RandomData;
-import api.requests.steps.UserSteps;
-import com.codeborne.selenide.Selenide;
 import common.annotations.UserSession;
-import iteration2.TestUtils;
-import org.junit.jupiter.api.AfterEach;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlerts;
@@ -28,8 +25,6 @@ public class TransferTest extends BaseUiTest {
     private final BigDecimal invalidBalance = new BigDecimal("0");
     private final String invalidRecipientAccountId = RandomData.getRandomAmountAsString();
     private BigDecimal senderInitialBalance;
-    private String username;
-    private String password;
     private Long senderAccountId;
     private Long recipientAccountId;
     private String recipientAccountNumber;
@@ -38,9 +33,9 @@ public class TransferTest extends BaseUiTest {
 
     @BeforeEach
     public void Setup() {
-        // создаем 2 аккаунта пользователю, который генерится в UserSessionExtension
+        // создаем 2 аккаунта пользователю, который уже создан и залогинен UiUserSessionExtension'ом
         repeat(2, () -> {
-            var userAccount = UserSteps.createAccount(username, password);
+            var userAccount = SessionStorage.actAsUser().createAccount();
             userAccountsNumbers.add(userAccount.getAccountNumber());
             userAccountsIds.add(userAccount.getId());
         });
@@ -50,18 +45,10 @@ public class TransferTest extends BaseUiTest {
         recipientAccountNumber = userAccountsNumbers.get(1);
 
         // депозит на счет
-        UserSteps.depositMoney(senderAccountId, DEFAULT_DEPOSIT, username, password);
+        SessionStorage.actAsUser().depositMoney(senderAccountId, DEFAULT_DEPOSIT);
 
         // сохраняем баланс для будущих проверок
-        var userAccounts = UserSteps.getAccounts(username, password);
-        senderInitialBalance = TestUtils.getAccountBalance(userAccounts, senderAccountId);
-    }
-
-    @AfterEach
-    public void tearDown() {
-        Selenide.cookies().clear();
-        Selenide.executeJavaScript("localStorage.clear();");
-        Selenide.open("about:blank");
+        senderInitialBalance = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
     }
 
     @Test
@@ -79,8 +66,7 @@ public class TransferTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(expectedAlert);
 
         //Проверка на API
-        var userAccounts = UserSteps.getAccounts(username, password);
-        var recipientAccountBalance = TestUtils.getAccountBalance(userAccounts, recipientAccountId);
+        var recipientAccountBalance = SessionStorage.actAsUser().getAccountBalance(recipientAccountId);
         assertEquals(0, recipientAccountBalance.compareTo(randomBalance));
     }
 
@@ -97,8 +83,7 @@ public class TransferTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_EMPTY_FORM.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)
-        var userAccounts = UserSteps.getAccounts(username, password);
-        var senderAccountBalance = TestUtils.getAccountBalance(userAccounts, senderAccountId);
+        var senderAccountBalance = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         assertEquals(0, senderAccountBalance.compareTo(senderInitialBalance));
     }
 
@@ -115,8 +100,7 @@ public class TransferTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_INVALID_ACCOUNT.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)
-        var userAccounts = UserSteps.getAccounts(username, password);
-        var senderAccountBalance = TestUtils.getAccountBalance(userAccounts, senderAccountId);
+        var senderAccountBalance = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         assertEquals(0, senderAccountBalance.compareTo(senderInitialBalance));
     }
 
@@ -133,8 +117,7 @@ public class TransferTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(BankAlerts.USER_TRANSFER_FAIL_INVALID_AMOUNT_LOWER_001.getMessage());
 
         //Проверка на API (баланс пользователя не изменился)
-        var userAccounts = UserSteps.getAccounts(username, password);
-        var senderAccountBalance = TestUtils.getAccountBalance(userAccounts, senderAccountId);
+        var senderAccountBalance = SessionStorage.actAsUser().getAccountBalance(senderAccountId);
         assertEquals(0, senderAccountBalance.compareTo(senderInitialBalance));
     }
 }
