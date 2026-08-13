@@ -1,6 +1,7 @@
 package iteration2.api;
 
 import common.extensions.ApiUserSessionExtension;
+import common.extensions.TestTypeExtension;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * (создаётся ApiUserSessionExtension по аннотации @UserSession на тестовом методе).
  */
 @ExtendWith(ApiUserSessionExtension.class)
+@ExtendWith(TestTypeExtension.class)
 public class BaseApiTest {
 
     protected SoftAssertions softly;

@@ -10,6 +10,7 @@ import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
+import common.annotations.TestType;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,10 +63,12 @@ public class DepositTest extends BaseApiTest {
         );
     }
 
+
     @UserSession
     @ParameterizedTest
     @MethodSource("depositValidData")
     @DisplayName("Юзер может пополнить акк")
+    @TestType("regress")
     public void userCanDepositOnHisAccount(BigDecimal balance) {
         //депозит
         var request = DepositMoneyRequest.builder()
@@ -98,6 +101,7 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositInvalidData")
     @DisplayName("Юзер не может пополнить при невалидных данных")
+    @TestType({"regress", "smoke"})
     public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal balance, String errorValue) {
         var depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(userAccountId)
@@ -121,6 +125,7 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
+    @TestType("smoke")
     public void userCanNotDepositOnInvalidAccount(String errorValue) {
 
         var secondUserAccountId = SessionStorage.actAsUser(2).createAccount().getId();
