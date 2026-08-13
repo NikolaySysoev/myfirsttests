@@ -1,14 +1,18 @@
 package ui.pages;
 
-import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import com.codeborne.selenide.SelenideElement;
+import api.models.requests.CreateUserRequest;
+import api.specs.RequestSpecs;
+import com.codeborne.selenide.*;
 import lombok.Getter;
 import org.openqa.selenium.Alert;
+import ui.elements.BaseElement;
+
+import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.reflect.Field;
+import java.util.List;
+import java.util.function.Function;
 
 import static com.codeborne.selenide.Selenide.$;
 
@@ -26,6 +30,18 @@ public abstract class BasePage<T extends BasePage> {
 
     public <T extends BasePage> T getPage(Class<T> pageClass) {
         return Selenide.page(pageClass);
+    }
+
+    public static void putUserTokenInLocalStorage(String username, String password) {
+        Selenide.open("/login");
+        String authToken = RequestSpecs.getUserAuthHeader(username,password);
+        Selenide.localStorage().setItem("authToken", authToken);
+        Selenide.refresh();
+//        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", authToken);
+    }
+
+    public static void putUserTokenInLocalStorage(CreateUserRequest createUserRequest) {
+        putUserTokenInLocalStorage(createUserRequest.getUsername(), createUserRequest.getPassword());
     }
 
     public T click(SelenideElement element) {
@@ -57,5 +73,12 @@ public abstract class BasePage<T extends BasePage> {
     public T chooseAccount(long accountId) {
         accountSelector.selectOptionContainingText(String.valueOf(accountId));
         return (T) this;
+    }
+
+    // ElementCollection -> List<BaseElement> (сериализация)
+    protected <T extends BaseElement>List<T> generatePageElements(ElementsCollection elementsCollection, Function<SelenideElement, T> constructor) {
+        return elementsCollection.stream()
+                .map(constructor)
+                .toList();
     }
 };

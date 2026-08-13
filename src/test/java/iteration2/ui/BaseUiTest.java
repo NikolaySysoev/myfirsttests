@@ -1,17 +1,19 @@
 package iteration2.ui;
 
-import api.models.requests.CreateUserRequest;
-import api.specs.RequestSpecs;
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
-import iteration2.api.BaseTest;
+import common.extensions.BrowserMatchExtension;
+import common.extensions.UiUserSessionExtension;
+import common.storage.SessionStorage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Map;
 
-import static com.codeborne.selenide.Selenide.executeJavaScript;
-
-public class BaseUiTest extends BaseTest {
+@ExtendWith(UiUserSessionExtension.class)
+@ExtendWith(BrowserMatchExtension.class)
+public class BaseUiTest {
 
     @BeforeAll
     public static void setupSelenoid() {
@@ -25,13 +27,12 @@ public class BaseUiTest extends BaseTest {
         );
     }
 
-    public void putUserTokenInLocalStorage(String username, String password) {
-        Selenide.open("/login");
-        String authToken = RequestSpecs.getUserAuthHeader(username,password);
-        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", authToken);
+    @AfterEach
+    public void tearDown() {
+        Selenide.cookies().clear();
+        Selenide.executeJavaScript("localStorage.clear();");
+        Selenide.open("about:blank");
+        SessionStorage.clear();
     }
 
-    public void putUserTokenInLocalStorage(CreateUserRequest createUserRequest) {
-        putUserTokenInLocalStorage(createUserRequest.getUsername(), createUserRequest.getPassword());
-    }
 }

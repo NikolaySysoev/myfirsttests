@@ -1,6 +1,7 @@
 package api.specs;
 
 import api.configs.Config;
+import api.models.requests.CreateUserRequest;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
@@ -46,6 +47,10 @@ public class RequestSpecs {
         return defaultRequestBuilder()
                 .addHeader(HttpHeaders.AUTHORIZATION, getUserAuthHeader(username, password))
                 .build();
+    }
+
+    public static RequestSpecification authAsUser(CreateUserRequest user) {
+        return authAsUser(user.getUsername(), user.getPassword());
     }
 
     public static RequestSpecification authAsUser(String userAuthHeader) {

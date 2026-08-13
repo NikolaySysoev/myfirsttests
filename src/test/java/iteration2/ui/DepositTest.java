@@ -1,11 +1,9 @@
 package iteration2.ui;
 
 import api.generators.RandomData;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.UserSteps;
 import com.codeborne.selenide.Condition;
-import com.codeborne.selenide.Selenide;
-import org.junit.jupiter.api.AfterEach;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlerts;
@@ -20,35 +18,19 @@ public class DepositTest extends BaseUiTest {
     private final BigDecimal invalidBalance = new BigDecimal("5001");
     private String accountNumber;
     private long accountId;
-    private String username;
-    private String password;
 
     DepositPage depositPage = new DepositPage();
 
     @BeforeEach
     public void setup() {
-        //1 - админ создает пользователя
-        var userData = AdminSteps.createUser();
-
-        username = userData.getUsername();
-        password = userData.getPassword();
-
-        putUserTokenInLocalStorage(username, password);
-
-        // создаем аккаунт
-        var userAccount = UserSteps.createAccount(username, password);
+        // пользователь уже создан и залогинен UiUserSessionExtension'ом (по @UserSession на тестовом методе)
+        var userAccount = SessionStorage.actAsUser().createAccount();
         accountNumber = userAccount.getAccountNumber();
         accountId = userAccount.getId();
     }
 
-    @AfterEach
-    public void tearDown() {
-        Selenide.cookies().clear();
-        Selenide.executeJavaScript("localStorage.clear();");
-        Selenide.open("about:blank");
-    }
-
     @Test
+    @UserSession
     public void userCanDepositOnAccount() {
         String expectedAlertText = BankAlerts.USER_DEPOSIT_SUCCESS.format(randomBalance, accountNumber);
 
@@ -63,12 +45,12 @@ public class DepositTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(expectedAlertText);
 
         // проверка на API
-        var userAccount = UserSteps.getAccounts(username, password);
-        var userBalance = UserSteps.getAccountBalance(userAccount, accountId);
+        var userBalance = SessionStorage.actAsUser().getAccountBalance(accountId);
         assertEquals(0, randomBalance.compareTo(userBalance));
     }
 
     @Test
+    @UserSession
     public void userCannotDepositOnAccount() {
         // выбор 1го счета из доступных и заполнение суммы
         depositPage.open()
@@ -81,8 +63,7 @@ public class DepositTest extends BaseUiTest {
                 .checkAlertMessageAndAccept(BankAlerts.USER_DEPOSIT_FAIL.getMessage());
 
         // проверка на API
-        var userAccount = UserSteps.getAccounts(username, password);
-        var userBalance = UserSteps.getAccountBalance(userAccount, accountId);
+        var userBalance = SessionStorage.actAsUser().getAccountBalance(accountId);
         assertEquals(0, BigDecimal.ZERO.compareTo(userBalance));
     }
 }

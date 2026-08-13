@@ -5,47 +5,36 @@ import api.models.ApiError;
 import api.models.assertions.ModelAssertions;
 import api.models.requests.DepositMoneyRequest;
 import api.models.responses.DepositMoneyResponse;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
+import common.annotations.TestType;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import api.requests.skelethon.Endpoint;
-import api.requests.skelethon.requesters.CrudRequester;
-import api.requests.skelethon.requesters.ValidatedCrudRequester;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.UserSteps;
-import api.specs.RequestSpecs;
-import api.specs.ResponseSpecs;
 
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
-import static iteration2.TestUtils.getAccountBalance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
-public class DepositTest {
+public class DepositTest extends BaseApiTest {
 
     private BigDecimal userInitialBalance;
     private long userAccountId;
-    private String username;
-    private String password;
     private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
 
     @BeforeEach
     public void setup() {
-        //создаем пользователя
-        var createUserRequest = AdminSteps.createUser();
-
-        //создание 1го аккаунта (sender)
-        var createAccountResponse = UserSteps.createAccount(
-                createUserRequest.getUsername(),
-                createUserRequest.getPassword()
-        );
-
-        username = createUserRequest.getUsername();
-        password = createUserRequest.getPassword();
+        // пользователь уже создан ApiUserSessionExtension'ом (по @UserSession на тестовом методе)
+        var createAccountResponse = SessionStorage.actAsUser().createAccount();
 
         //вытаскиваем айдишку счета и стартовый баланс
         userAccountId = createAccountResponse.getId();
@@ -74,9 +63,12 @@ public class DepositTest {
         );
     }
 
+
+    @UserSession
     @ParameterizedTest
     @MethodSource("depositValidData")
     @DisplayName("Юзер может пополнить акк")
+    @TestType("regress")
     public void userCanDepositOnHisAccount(BigDecimal balance) {
         //депозит
         var request = DepositMoneyRequest.builder()
@@ -85,19 +77,17 @@ public class DepositTest {
                 .build();
 
         var response = new ValidatedCrudRequester<DepositMoneyResponse>(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
         ).
                 post(request);
 
         //echo проверка id аккаунта
-        ModelAssertions.assertThatModels(request,response).match();
+        ModelAssertions.assertThatModels(request, response).match();
 
-        //делаем гет запрос на проверку изменения данных
-        var accounts = UserSteps.getAccounts(username, password);
-
-        BigDecimal balanceAfterDeposit = UserSteps.getAccountBalance(accounts, userAccountId);
+        //баланс после депозита через шаги пользователя из хранилища
+        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser().getAccountBalance(userAccountId);
         BigDecimal expectedBalance = userInitialBalance.add(balance);
 
         //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
@@ -107,9 +97,11 @@ public class DepositTest {
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
     }
 
+    @UserSession
     @ParameterizedTest
     @MethodSource("depositInvalidData")
     @DisplayName("Юзер не может пополнить при невалидных данных")
+    @TestType({"regress", "smoke"})
     public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal balance, String errorValue) {
         var depositMoneyRequest = DepositMoneyRequest.builder()
                 .id(userAccountId)
@@ -117,28 +109,26 @@ public class DepositTest {
                 .build();
 
         new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsBadRequest(errorValue)
         )
                 .post(depositMoneyRequest);
 
-        var accounts = UserSteps.getAccounts(username, password);
-
-
         BigDecimal expectedBalance = userInitialBalance;
-        BigDecimal balanceAfterDeposit = UserSteps.getAccountBalance(accounts, userAccountId);
+        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser().getAccountBalance(userAccountId);
 
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
     }
 
+    @UserSession(2)
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
+    @TestType("smoke")
     public void userCanNotDepositOnInvalidAccount(String errorValue) {
 
-        var userRequest = AdminSteps.createUser();
-        var secondUserAccountId = UserSteps.createAccount(userRequest.getUsername(), userRequest.getPassword()).getId();
+        var secondUserAccountId = SessionStorage.actAsUser(2).createAccount().getId();
 
         //создаем объект запроса на депозит
         DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
@@ -146,21 +136,18 @@ public class DepositTest {
                 .balance(randomBalance)
                 .build();
 
-        //делаем пост запрос на депозит
+        //делаем пост запрос на депозит от лица первого пользователя на счет второго
         new CrudRequester(
-                RequestSpecs.authAsUser(username, password),
+                RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.DEPOSIT_MONEY,
                 ResponseSpecs.requestReturnsForbidden(errorValue)
         )
                 .post(depositMoneyRequest);
 
         //проверяем акк 2го пользователя, убеждаемся что баланс не изменился
-        var accounts = UserSteps.getAccounts(userRequest.getUsername(), userRequest.getPassword());
-
         BigDecimal expectedBalance = new BigDecimal("0.00");
-        BigDecimal balanceAfterDeposit = getAccountBalance(accounts, secondUserAccountId);
+        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser(2).getAccountBalance(secondUserAccountId);
 
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
-
     }
 }

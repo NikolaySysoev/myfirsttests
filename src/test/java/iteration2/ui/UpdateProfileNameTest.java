@@ -1,9 +1,7 @@
 package iteration2.ui;
 
-import api.requests.steps.AdminSteps;
-import api.requests.steps.UserSteps;
-import com.codeborne.selenide.Selenide;
-import org.junit.jupiter.api.AfterEach;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlerts;
@@ -17,32 +15,17 @@ public class UpdateProfileNameTest extends BaseUiTest{
     private final String NEW_INVALID_NAME = "newInvalidName";
 
     private String userInitialName;
-    private String username;
-    private String password;
 
     EditProfilePage editProfilePage = new EditProfilePage();
 
     @BeforeEach
     public void Setup() {
-        // админ создает пользователя
-        var userData = AdminSteps.createUser();
-
-        username = userData.getUsername();
-        password = userData.getPassword();
-
-        putUserTokenInLocalStorage(username, password);
-
-        userInitialName = UserSteps.getCustomerProfile(username, password).getName();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        Selenide.cookies().clear();
-        Selenide.executeJavaScript("localStorage.clear();");
-        Selenide.open("about:blank");
+        // пользователь уже создан и залогинен UiUserSessionExtension'ом (по @UserSession на тестовом методе)
+        userInitialName = SessionStorage.actAsUser().getCustomerProfile().getName();
     }
 
     @Test
+    @UserSession
     public void UserCanChangeName() {
         editProfilePage.open()
                 .setValue(editProfilePage.getNewNameInput(), NEW_VALID_NAME)
@@ -50,11 +33,12 @@ public class UpdateProfileNameTest extends BaseUiTest{
                 .checkAlertMessageAndAccept(BankAlerts.USER_CHANGE_NAME_SUCCESS.getMessage());
 
         // Проверка на API
-        String actualUserName = UserSteps.getCustomerProfile(username, password).getName();
+        String actualUserName = SessionStorage.actAsUser().getCustomerProfile().getName();
         assertEquals(NEW_VALID_NAME, actualUserName);
     }
 
     @Test
+    @UserSession
     public void userCanNotChangeNameWhenInvalidNewName() {
         editProfilePage.open()
                 .setValue(editProfilePage.getNewNameInput(), NEW_INVALID_NAME)
@@ -62,9 +46,8 @@ public class UpdateProfileNameTest extends BaseUiTest{
                 .checkAlertMessageAndAccept(BankAlerts.USER_CHANGE_NAME_FAIL.getMessage());
 
         // Проверка на API
-        String actualUserName = UserSteps.getCustomerProfile(username, password).getName();
+        String actualUserName = SessionStorage.actAsUser().getCustomerProfile().getName();
         assertNotEquals(NEW_INVALID_NAME, actualUserName);
         assertEquals(userInitialName, actualUserName);
     }
 }
-

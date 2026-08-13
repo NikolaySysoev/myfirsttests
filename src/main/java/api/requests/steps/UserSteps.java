@@ -1,13 +1,10 @@
 package api.requests.steps;
 
-import api.models.requests.CreateUserRequest;
 import api.models.requests.DepositMoneyRequest;
-import api.models.requests.LoginRequest;
 import api.models.responses.CreateAccountResponse;
 import api.models.responses.DepositMoneyResponse;
 import api.models.responses.GetCustomerProfileResponse;
 import api.models.responses.GetUserAccountsResponse;
-import org.apache.http.HttpHeaders;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
@@ -18,26 +15,15 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 
 public class UserSteps {
+    private final String username;
+    private final String password;
 
-    public static String loginUser(CreateUserRequest userRequest) {
-        var loginRequest = LoginRequest.builder()
-                .username(userRequest.getUsername())
-                .password(userRequest.getPassword())
-                .build();
-
-        String userAuthToken;
-
-        return userAuthToken = new CrudRequester(
-                RequestSpecs.unAuthSpec(),
-                Endpoint.LOGIN,
-                ResponseSpecs.requestReturnsOK()
-        )
-                .post(loginRequest)
-                .extract()
-                .header(HttpHeaders.AUTHORIZATION);
+    public UserSteps(String username, String password) {
+        this.username = username;
+        this.password = password;
     }
 
-    public static CreateAccountResponse createAccount(String username, String password) {
+    public CreateAccountResponse createAccount() {
         return new ValidatedCrudRequester<CreateAccountResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.CREATE_ACCOUNTS,
@@ -46,21 +32,19 @@ public class UserSteps {
                 .post();
     }
 
-    public static DepositMoneyResponse depositMoney(long accountId, BigDecimal balance, String username, String password) {
+    public DepositMoneyResponse depositMoney(long accountId, BigDecimal balance) {
         var request = DepositMoneyRequest.builder().id(accountId).balance(balance).build();
 
         return new ValidatedCrudRequester<DepositMoneyResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
-        ).
-                post(request);
+        )
+                .post(request);
     }
 
-    public static GetUserAccountsResponse[] getAccounts(String username, String password) {
-        GetUserAccountsResponse[] accounts;
-
-        return accounts = new CrudRequester(
+    public GetUserAccountsResponse[] getAccounts() {
+        return new CrudRequester(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.GET_CUSTOMER_ACCOUNTS,
                 ResponseSpecs.requestReturnsOK()
@@ -70,15 +54,11 @@ public class UserSteps {
                 .as(GetUserAccountsResponse[].class);
     }
 
-    public static BigDecimal getAccountBalance(GetUserAccountsResponse[] accounts, long accountId) {
-        return Arrays.stream(accounts)
-                .filter(acc -> acc.getId() == accountId)
-                .map(GetUserAccountsResponse::getBalance)
-                .findFirst()
-                .orElseThrow();
+    public BigDecimal getAccountBalance(long accountId) {
+        return getAccountBalance(getAccounts(), accountId);
     }
 
-    public static GetCustomerProfileResponse getCustomerProfile(String username, String password) {
+    public GetCustomerProfileResponse getCustomerProfile() {
         return new ValidatedCrudRequester<GetCustomerProfileResponse>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.GET_CUSTOMER_PROFILE,
@@ -86,5 +66,13 @@ public class UserSteps {
         )
                 .get();
     }
-}
 
+    // приватный хелпер: чистая фильтрация уже полученного массива счетов, без похода в API
+    private static BigDecimal getAccountBalance(GetUserAccountsResponse[] accounts, long accountId) {
+        return Arrays.stream(accounts)
+                .filter(acc -> acc.getId() == accountId)
+                .map(GetUserAccountsResponse::getBalance)
+                .findFirst()
+                .orElseThrow();
+    }
+}
