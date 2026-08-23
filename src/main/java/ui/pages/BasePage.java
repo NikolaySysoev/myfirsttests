@@ -3,6 +3,7 @@ package ui.pages;
 import api.models.requests.CreateUserRequest;
 import api.specs.RequestSpecs;
 import com.codeborne.selenide.*;
+import common.helpers.UiInputValueWaiter;
 import lombok.Getter;
 import org.openqa.selenium.Alert;
 import ui.elements.BaseElement;
@@ -50,10 +51,15 @@ public abstract class BasePage<T extends BasePage> {
     }
 
     public T setValue(SelenideElement element, String value) {
-        element.clear();
-        element.click();
         element.setValue(value);
-        element.shouldHave(Condition.exactValue(value));
+        UiInputValueWaiter.waitForValue(element,value);
+        return (T) this;
+    }
+
+    public T waitAndSetValue(SelenideElement element, String value, long waitBeforeAction) {
+        Selenide.sleep(waitBeforeAction);
+        element.setValue(value);
+        UiInputValueWaiter.waitForValue(element,value);
         return (T) this;
     }
 

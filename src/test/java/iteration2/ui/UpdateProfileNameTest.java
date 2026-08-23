@@ -1,8 +1,10 @@
 package iteration2.ui;
 
+import com.codeborne.selenide.Selenide;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import ui.pages.BankAlerts;
 import ui.pages.EditProfilePage;
@@ -24,7 +26,6 @@ public class UpdateProfileNameTest extends BaseUiTest{
         userInitialName = SessionStorage.actAsUser().getCustomerProfile().getName();
     }
 
-    @Test
     @UserSession
     public void UserCanChangeName() {
         editProfilePage.open()
@@ -41,7 +42,7 @@ public class UpdateProfileNameTest extends BaseUiTest{
     @UserSession
     public void userCanNotChangeNameWhenInvalidNewName() {
         editProfilePage.open()
-                .setValue(editProfilePage.getNewNameInput(), NEW_INVALID_NAME)
+                .waitAndSetValue(editProfilePage.getNewNameInput(), NEW_INVALID_NAME, 500)
                 .click(editProfilePage.getSaveChangesButton())
                 .checkAlertMessageAndAccept(BankAlerts.USER_CHANGE_NAME_FAIL.getMessage());
 
