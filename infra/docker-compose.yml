@@ -13,6 +13,20 @@ services:
     networks:
       - nbank-network
 
+  # Легаси-версия бэка. Тесты ходят на неё при -DbackendVersion=V1
+  # (порт задан в api.configs.BackendVersion).
+  #
+  # Своей БД у сервиса нет: судя по тегу, эта сборка ещё без внешнего хранилища.
+  # Если при старте окажется, что датасорс ей всё-таки нужен — поднимаем отдельный
+  # postgres-legacy со своим томом, а не переиспользуем соседний: две версии на одной
+  # схеме nbank будут затирать данные друг другу.
+  backend-legacy:
+    image: nobugsme/nbank:with_validation_fix_with_swagger
+    ports:
+      - "4112:4111"
+    networks:
+      - nbank-network
+
   postgres:
     image: postgres:15-alpine
     ports:

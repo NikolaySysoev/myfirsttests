@@ -1,6 +1,6 @@
 package ui.pages;
 
-import api.models.requests.CreateUserRequest;
+import api.models.v1.requests.CreateUserRequest;
 import api.specs.RequestSpecs;
 import com.codeborne.selenide.*;
 import common.helpers.UiInputValueWaiter;

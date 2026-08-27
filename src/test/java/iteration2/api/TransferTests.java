@@ -1,10 +1,10 @@
 package iteration2.api;
 
 import api.generators.RandomData;
-import api.models.ApiError;
+import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
-import api.models.requests.TransferMoneyRequest;
-import api.models.responses.TransferMoneyResponse;
+import api.models.v1.requests.TransferMoneyRequest;
+import api.models.v1.responses.TransferMoneyResponse;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
@@ -65,15 +65,15 @@ public class TransferTests extends BaseApiTest {
 
     public static Stream<Arguments> invalidAmount() {
         return Stream.of(
-                Arguments.of(new BigDecimal("10000.01"), ApiError.TRANSFER_HIGHER_BOUNDARY.getMessage()),
-                Arguments.of(new BigDecimal("0"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage()),
-                Arguments.of(new BigDecimal("-0.01"), ApiError.TRANSFER_LOWER_BOUNDARY.getMessage())
+                Arguments.of(new BigDecimal("10000.01"), ApiError.TRANSFER_HIGHER_BOUNDARY),
+                Arguments.of(new BigDecimal("0"), ApiError.TRANSFER_LOWER_BOUNDARY),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.TRANSFER_LOWER_BOUNDARY)
         );
     }
 
     public static Stream<Arguments> insufficientFundsData() {
         return Stream.of(
-                Arguments.of(randomBalance, ApiError.TRANSFER_INSUFFICIENT_FUNDS.getMessage())
+                Arguments.of(randomBalance, ApiError.TRANSFER_INSUFFICIENT_FUNDS)
         );
     }
 
@@ -117,7 +117,7 @@ public class TransferTests extends BaseApiTest {
     @UserSession
     @ParameterizedTest
     @MethodSource("invalidAmount")
-    public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
+    public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue) {
         //готовим данные для трансфера
         var transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(senderAccountId)
@@ -193,7 +193,7 @@ public class TransferTests extends BaseApiTest {
     @UserSession(2)
     @ParameterizedTest
     @MethodSource("invalidAmount")
-    public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, String errorValue) {
+    public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue) {
         //создаем счет второму пользователю
         var secondUserAccountResponse = SessionStorage.actAsUser(2).createAccount();
 
@@ -233,7 +233,7 @@ public class TransferTests extends BaseApiTest {
     @UserSession
     @ParameterizedTest
     @MethodSource("insufficientFundsData")
-    public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, String errorValue) {
+    public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, ApiError errorValue) {
         //готовим данные для трансфера
         //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
         var transferMoneyRequest = TransferMoneyRequest.builder()

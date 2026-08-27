@@ -1,5 +1,7 @@
 package api.models.assertions;
 
+import common.versioning.ApiVersionContext;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,17 +33,33 @@ public final class ModelComparisonConfigLoader {
     public static ModelComparisonRule getRule(Class<?> requestClass, Class<?> responseClass) {
         String requestName = requestClass.getSimpleName();
         String responseName = responseClass.getSimpleName();
-        ModelComparisonRule rule = RULES.get(key(requestName, responseName));
+
+        // Простые имена классов у разных версий совпадают (v1.DepositMoneyRequest и
+        // v2.DepositMoneyRequest), поэтому сначала ищем правило, помеченное активной
+        // версией ("V2.DepositMoneyRequest=..."), и только потом общее.
+        //
+        // Версию берём из контекста теста, а не из пакета модели запроса: бывает, что
+        // запрос у версий общий, а ответ разошёлся (смена имени — ровно такой случай),
+        // и по пакету запроса версию не определить.
+        String version = ApiVersionContext.current().name();
+        ModelComparisonRule rule = RULES.get(key(version + "." + requestName, responseName));
+        if (rule == null) {
+            rule = RULES.get(key(requestName, responseName));
+        }
 
         if (rule == null) {
             throw new IllegalStateException(
                     "Не найдено правило сравнения для " + requestName + " -> " + responseName
                             + ". Добавьте строку в " + CONFIG_FILE + ", например:" + System.lineSeparator()
                             + requestName + "=" + responseName + ":field1=field1,field2=field2"
+                            + System.lineSeparator()
+                            + "Правило только для одной версии помечается префиксом, например: "
+                            + "V2." + requestName + "=" + responseName + ":field1=field1"
             );
         }
         return rule;
     }
+
 
     private static String key(String requestClassName, String responseClassName) {
         return requestClassName + "->" + responseClassName;

@@ -1,6 +1,6 @@
 package common.storage;
 
-import api.models.requests.CreateUserRequest;
+import api.models.v1.requests.CreateUserRequest;
 import api.requests.steps.UserSteps;
 
 import java.util.ArrayList;

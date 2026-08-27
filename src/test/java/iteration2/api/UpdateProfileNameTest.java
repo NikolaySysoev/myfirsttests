@@ -1,9 +1,9 @@
 package iteration2.api;
 
-import api.models.ApiError;
+import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
-import api.models.requests.ChangeNameRequest;
-import api.models.responses.ChangeNameResponse;
+import api.models.BaseModel;
+import api.models.factory.DtoFactory;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
@@ -37,41 +37,40 @@ public class UpdateProfileNameTest extends BaseApiTest {
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage())
-//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR.getMessage())  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
+                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR)
+//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
         );
     }
 
     @UserSession
     @Test
-    public void userCanChangeNameWhenValidData() {
-        var changeNameRequest = ChangeNameRequest.builder()
-                .name(DEFAULT_VALID_NAME)
-                .build();
+    public void userCanChangeNameWhenValidData(DtoFactory dto) {
+        var changeNameRequest = dto.changeName(DEFAULT_VALID_NAME);
 
-        var changeNameResponse = new ValidatedCrudRequester<ChangeNameResponse>(
+        BaseModel changeNameResponse = new ValidatedCrudRequester<BaseModel>(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.CHANGE_CUSTOMER_NAME,
                 ResponseSpecs.requestReturnsOK()
         )
                 .put(changeNameRequest);
 
-        ModelAssertions.assertThatModels(changeNameRequest,changeNameResponse).match();
+        ModelAssertions.assertThatModels(changeNameRequest, changeNameResponse).match();
 
-
-        String newUserName = changeNameResponse.getCustomer().getName();
-        String message = changeNameResponse.getMessage();
-
+        String newUserName = dto.changedName(changeNameResponse).getName();
         softly.assertThat(newUserName).isEqualTo(DEFAULT_VALID_NAME);
-        softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE);
+
+        // сообщение об успехе есть только в легаси-контракте: в актуальной версии
+        // ответ его не содержит, поэтому проверяем там, где оно вообще приходит
+        dto.successMessage(changeNameResponse)
+                .ifPresent(message -> softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE));
 
         String profileName = SessionStorage.actAsUser().getCustomerProfile().getName();
 
@@ -81,10 +80,8 @@ public class UpdateProfileNameTest extends BaseApiTest {
     @UserSession
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue) {
-        var changeName = ChangeNameRequest.builder()
-                .name(newName)
-                .build();
+    public void userCanNotChangeNameWhenInvalidData(String newName, ApiError errorValue, DtoFactory dto) {
+        var changeName = dto.changeName(newName);
 
         new CrudRequester(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),

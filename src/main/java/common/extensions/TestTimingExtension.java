@@ -54,9 +54,18 @@ public class TestTimingExtension implements
     public void afterEach(ExtensionContext context) throws Exception {
         ExtensionContext.Store store = context.getStore(NAMESPACE);
 
-        long testExecutionEnd = store.get("testExecutionEnd", Long.class);
+        Long testExecutionEnd = store.get("testExecutionEnd", Long.class);
         String threadName = store.get("threadName", String.class);
         String testName = store.get("testName", String.class);
+
+        // Если beforeEach упал (например, недоступен селеноид или бэк), тело теста не
+        // выполнялось, afterTestExecution не вызывался и testExecutionEnd пуст.
+        // afterEach при этом вызывается всегда — без этой проверки здесь падал NPE
+        // и прицеплялся к настоящей ошибке как Suppressed, маскируя её.
+        if (testExecutionEnd == null) {
+            System.out.println(threadName + " [teardown] '" + testName + "' — тест не выполнялся, упал setup");
+            return;
+        }
 
         long afterEachEnd = System.currentTimeMillis();
 

@@ -1,10 +1,10 @@
 package iteration2.api;
 
 import api.generators.RandomData;
-import api.models.ApiError;
+import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
-import api.models.requests.DepositMoneyRequest;
-import api.models.responses.DepositMoneyResponse;
+import api.models.factory.DtoFactory;
+import api.models.BaseModel;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
@@ -23,7 +23,15 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-
+/**
+ * Тест не привязан к версии бэкенда: DTO запроса собирает {@link DtoFactory},
+ * которую подставляет ApiVersionExtension по активной версии.
+ * <p>
+ * Аннотации @ApiVersion нет — значит тест идёт на версию по умолчанию (V2)
+ * либо на ту, что задана через -DbackendVersion. Чтобы принудительно оставить
+ * тест на легаси, достаточно повесить @ApiVersion(BackendVersion.V1)
+ * на метод или на класс.
+ */
 public class DepositTest extends BaseApiTest {
 
     private BigDecimal userInitialBalance;
@@ -48,17 +56,25 @@ public class DepositTest extends BaseApiTest {
         );
     }
 
+    /**
+     * В Arguments кладём саму константу ApiError, а не её текст.
+     * <p>
+     * @MethodSource вычисляется на этапе построения инвокаций параметризованного
+     * теста — ДО beforeEach, то есть до того, как ApiVersionExtension установил
+     * версию. Если звать getMessage() здесь, текст ошибки отрезолвится на пустом
+     * контексте. В теле теста версия уже определена, поэтому текст берём там.
+     */
     public static Stream<Arguments> depositInvalidData() {
         return Stream.of(
-                Arguments.of(new BigDecimal("0.00"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage()),
-                Arguments.of(new BigDecimal("5000.01"), ApiError.DEPOSIT_HIGHER_BOUNDARY.getMessage()),
-                Arguments.of(new BigDecimal("-0.01"), ApiError.DEPOSIT_LOWER_BOUNDARY.getMessage())
+                Arguments.of(new BigDecimal("0.00"), ApiError.DEPOSIT_LOWER_BOUNDARY),
+                Arguments.of(new BigDecimal("5000.01"), ApiError.DEPOSIT_HIGHER_BOUNDARY),
+                Arguments.of(new BigDecimal("-0.01"), ApiError.DEPOSIT_LOWER_BOUNDARY)
         );
     }
 
     public static Stream<Arguments> depositInvalidAccount() {
         return Stream.of(
-                Arguments.of(ApiError.DEPOSIT_FORBIDDEN.getMessage())
+                Arguments.of(ApiError.DEPOSIT_FORBIDDEN)
         );
     }
 
@@ -67,14 +83,11 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositValidData")
     @DisplayName("Юзер может пополнить акк")
-    public void userCanDepositOnHisAccount(BigDecimal balance) {
-        //депозит
-        var request = DepositMoneyRequest.builder()
-                .id(userAccountId)
-                .balance(balance)
-                .build();
+    public void userCanDepositOnHisAccount(BigDecimal amount, DtoFactory dto) {
+        //депозит: DTO собирается под активную версию контракта
+        var request = dto.deposit(userAccountId, amount);
 
-        var response = new ValidatedCrudRequester<DepositMoneyResponse>(
+        var response = new ValidatedCrudRequester<BaseModel>(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_DEPOSIT,
                 ResponseSpecs.requestReturnsOK()
@@ -86,7 +99,7 @@ public class DepositTest extends BaseApiTest {
 
         //баланс после депозита через шаги пользователя из хранилища
         BigDecimal balanceAfterDeposit = SessionStorage.actAsUser().getAccountBalance(userAccountId);
-        BigDecimal expectedBalance = userInitialBalance.add(balance);
+        BigDecimal expectedBalance = userInitialBalance.add(amount);
 
         //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
         // если ожидаемый и после депозита равны -> компаратор вернет 0
@@ -99,16 +112,13 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositInvalidData")
     @DisplayName("Юзер не может пополнить при невалидных данных")
-    public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal balance, String errorValue) {
-        var depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(userAccountId)
-                .balance(balance)
-                .build();
+    public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal amount, ApiError error, DtoFactory dto) {
+        var depositMoneyRequest = dto.deposit(userAccountId, amount);
 
         new CrudRequester(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.ACCOUNTS_DEPOSIT,
-                ResponseSpecs.requestReturnsBadRequest(errorValue)
+                ResponseSpecs.requestReturnsBadRequest(error)
         )
                 .post(depositMoneyRequest);
 
@@ -122,21 +132,18 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
-    public void userCanNotDepositOnInvalidAccount(String errorValue) {
+    public void userCanNotDepositOnInvalidAccount(ApiError error, DtoFactory dto) {
 
         var secondUserAccountId = SessionStorage.actAsUser(2).createAccount().getId();
 
-        //создаем объект запроса на депозит
-        DepositMoneyRequest depositMoneyRequest = DepositMoneyRequest.builder()
-                .id(secondUserAccountId)
-                .balance(randomBalance)
-                .build();
+        //создаем объект запроса на депозит под активную версию контракта
+        var depositMoneyRequest = dto.deposit(secondUserAccountId, randomBalance);
 
         //делаем пост запрос на депозит от лица первого пользователя на счет второго
         new CrudRequester(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
-                Endpoint.DEPOSIT_MONEY,
-                ResponseSpecs.requestReturnsForbidden(errorValue)
+                Endpoint.ACCOUNTS_DEPOSIT,
+                ResponseSpecs.requestReturnsForbidden(error)
         )
                 .post(depositMoneyRequest);
 

@@ -1,6 +1,6 @@
 package common.extensions;
 
-import api.models.requests.CreateUserRequest;
+import api.models.v1.requests.CreateUserRequest;
 import api.requests.steps.AdminSteps;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
