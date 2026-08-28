@@ -1,6 +1,6 @@
 package common.storage;
 
-import api.models.requests.CreateUserRequest;
+import api.models.v1.requests.CreateUserRequest;
 import api.requests.steps.UserSteps;
 
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ import java.util.List;
  * {@code AdminSteps.createUser()}.
  */
 public class SessionStorage {
-    private static final SessionStorage INSTANCE = new SessionStorage();
+    private static final ThreadLocal<SessionStorage> INSTANCE = ThreadLocal.withInitial(SessionStorage::new);
 
     private final LinkedHashMap<CreateUserRequest, UserSteps> userStepsMap = new LinkedHashMap<>();
 
@@ -41,7 +41,7 @@ public class SessionStorage {
      */
     public static void addUsers(List<CreateUserRequest> users) {
         for (CreateUserRequest user: users) {
-            INSTANCE.userStepsMap.put(user, new UserSteps(user.getUsername(), user.getPassword()));
+            INSTANCE.get().userStepsMap.put(user, new UserSteps(user.getUsername(), user.getPassword()));
         }
     }
 
@@ -57,7 +57,7 @@ public class SessionStorage {
      * @return данные пользователя, соответствующего указанному порядковому номеру
      */
     public static CreateUserRequest getUserRawData (int userNumber) {
-        return new ArrayList<>(INSTANCE.userStepsMap.keySet()).get(userNumber -1);
+        return new ArrayList<>(INSTANCE.get().userStepsMap.keySet()).get(userNumber -1);
     }
 
     /**
@@ -78,7 +78,7 @@ public class SessionStorage {
      * @return актор, привязанный к этому пользователю
      */
     public static UserSteps actAsUser(int userNumber) {
-        return new ArrayList<>(INSTANCE.userStepsMap.values()).get(userNumber-1);
+        return new ArrayList<>(INSTANCE.get().userStepsMap.values()).get(userNumber-1);
     }
 
     /**
@@ -93,6 +93,6 @@ public class SessionStorage {
      * Полностью очищает хранилище пользователей.
      */
     public static void clear() {
-        INSTANCE.userStepsMap.clear();
+        INSTANCE.get().userStepsMap.clear();
     }
 }

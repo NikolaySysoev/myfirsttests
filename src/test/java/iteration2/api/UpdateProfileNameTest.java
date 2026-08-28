@@ -1,12 +1,14 @@
 package iteration2.api;
 
-import api.models.ApiError;
+import api.dao.checks.DbChecks;
+import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
-import api.models.requests.ChangeNameRequest;
-import api.models.responses.ChangeNameResponse;
+import api.models.BaseModel;
+import api.models.factory.DtoFactory;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.steps.DataBaseSteps;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
 import common.annotations.UserSession;
@@ -22,69 +24,73 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class UpdateProfileNameTest extends BaseApiTest {
-    private static final String DEFAULT_VALID_NAME = "Nikolay Sysoev";
+    private static final String DEFAULT_VALID_NAME = "Name Surname";
     private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
 
     private String initialName = null;
+    private long userId;
 
     @BeforeEach
     public void setup(){
         // пользователь уже создан ApiUserSessionExtension'ом (по @UserSession на тестовом методе)
 
         //вытаскиваем имя по умолчанию, заданное после создания пользователя
-        initialName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        var userAccount = SessionStorage.actAsUser().getCustomerProfile();
+        initialName = userAccount.getName();
+        userId = userAccount.getId();
     }
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage()),
-                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR.getMessage())
-//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR.getMessage())  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
+                Arguments.of("Name", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Name Name", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of(" ", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name123 Surname", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Surname123", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name^&*(! Surname", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Surname^&*(!", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR)
+//                Arguments.of(null, ApiError.CHANGE_NAME_ERROR)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
         );
     }
 
     @UserSession
     @Test
-    public void userCanChangeNameWhenValidData() {
-        var changeNameRequest = ChangeNameRequest.builder()
-                .name(DEFAULT_VALID_NAME)
-                .build();
+    public void userCanChangeNameWhenValidData(DtoFactory dto, DbChecks db) {
+        var changeNameRequest = dto.changeName(DEFAULT_VALID_NAME);
 
-        var changeNameResponse = new ValidatedCrudRequester<ChangeNameResponse>(
+        BaseModel changeNameResponse = new ValidatedCrudRequester<BaseModel>(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
                 Endpoint.CHANGE_CUSTOMER_NAME,
                 ResponseSpecs.requestReturnsOK()
         )
                 .put(changeNameRequest);
 
-        ModelAssertions.assertThatModels(changeNameRequest,changeNameResponse).match();
+        ModelAssertions.assertThatModels(changeNameRequest, changeNameResponse).match();
 
-
-        String newUserName = changeNameResponse.getCustomer().getName();
-        String message = changeNameResponse.getMessage();
-
+        String newUserName = dto.changedName(changeNameResponse).getName();
         softly.assertThat(newUserName).isEqualTo(DEFAULT_VALID_NAME);
-        softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE);
 
-        String profileName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        // сообщение об успехе есть только в легаси-контракте: в актуальной версии
+        // ответ его не содержит, поэтому проверяем там, где оно вообще приходит
+        dto.successMessage(changeNameResponse)
+                .ifPresent(message -> softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE));
+
+        var userProfile = SessionStorage.actAsUser().getCustomerProfile();
+        String profileName = userProfile.getName();
 
         assertEquals(DEFAULT_VALID_NAME, profileName);
+
+        //Проверка в БД
+        db.assertMatches(userProfile, () -> DataBaseSteps.getUserById(userId));
     }
 
     @UserSession
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void userCanNotChangeNameWhenInvalidData(String newName, String errorValue) {
-        var changeName = ChangeNameRequest.builder()
-                .name(newName)
-                .build();
+    public void userCanNotChangeNameWhenInvalidData(String newName, ApiError errorValue, DtoFactory dto, DbChecks db) {
+        var changeName = dto.changeName(newName);
 
         new CrudRequester(
                 RequestSpecs.authAsUser(SessionStorage.getUserRawData()),
@@ -93,8 +99,12 @@ public class UpdateProfileNameTest extends BaseApiTest {
         )
                 .put(changeName);
 
-        String newUserName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        var userProfile = SessionStorage.actAsUser().getCustomerProfile();
+        String profileName = userProfile.getName();
 
-        assertEquals(initialName, newUserName);
+        assertEquals(initialName, profileName);
+
+        //Проверка в БД
+        db.assertMatches(userProfile, () -> DataBaseSteps.getUserById(userId));
     }
 }

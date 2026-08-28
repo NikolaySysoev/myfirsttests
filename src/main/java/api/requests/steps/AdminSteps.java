@@ -1,8 +1,8 @@
 package api.requests.steps;
 
 import api.generators.RandomEntityGenerator;
-import api.models.requests.CreateUserRequest;
-import api.models.responses.CreateUserResponse;
+import api.models.v1.requests.CreateUserRequest;
+import api.models.v1.responses.CreateUserResponse;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.specs.RequestSpecs;
