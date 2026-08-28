@@ -1,8 +1,6 @@
 package api.database;
 
 import api.configs.Config;
-import api.dao.AccountDao;
-import api.dao.UserDao;
 import lombok.Builder;
 import lombok.Data;
 
@@ -41,43 +39,13 @@ public class DBRequest {
             }
 
             try (ResultSet resultSet = statement.executeQuery()) {
-                if (clazz == UserDao.class) {
-                    return (T) mapToUserDao(resultSet);
-                }
-                if (clazz == AccountDao.class) {
-                    return (T) mapToAccountDao(resultSet);
-                }
-                // Add more mappings as needed
-                throw new UnsupportedOperationException("Mapping for " + clazz.getSimpleName() + " not implemented");
+                // Маппинг общий для всех DAO: соответствие ищется по именам полей,
+                // поэтому новый DAO не требует правок здесь. См. RowMapper.
+                return resultSet.next() ? RowMapper.map(resultSet, clazz) : null;
             }
         } catch (SQLException e) {
             throw new RuntimeException("Database query failed", e);
         }
-    }
-
-    private UserDao mapToUserDao(ResultSet resultSet) throws SQLException {
-        if (resultSet.next()) {
-            return UserDao.builder()
-                    .id(resultSet.getLong("id"))
-                    .username(resultSet.getString("username"))
-                    .password(resultSet.getString("password"))
-                    .role(resultSet.getString("role"))
-                    .name(resultSet.getString("name"))
-                    .build();
-        }
-        return null;
-    }
-
-    private AccountDao mapToAccountDao(ResultSet resultSet) throws SQLException {
-        if (resultSet.next()) {
-            return AccountDao.builder()
-                    .id(resultSet.getLong("id"))
-                    .accountNumber(resultSet.getString("account_number"))
-                    .balance(resultSet.getDouble("balance"))
-                    .customerId(resultSet.getLong("customer_id"))
-                    .build();
-        }
-        return null;
     }
 
     private String buildSQL() {
@@ -103,7 +71,7 @@ public class DBRequest {
 
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
-                Config.getProperty("db.url"),
+                Config.getDbUrl(),
                 Config.getProperty("db.username"),
                 Config.getProperty("db.password")
         );

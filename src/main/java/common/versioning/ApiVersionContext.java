@@ -1,6 +1,7 @@
 package common.versioning;
 
 import api.configs.BackendVersion;
+import api.dao.checks.DbChecks;
 import api.models.factory.DtoFactory;
 
 /**
@@ -50,5 +51,13 @@ public final class ApiVersionContext {
     /** Фабрика DTO, соответствующая версии текущего теста. */
     public static DtoFactory dto() {
         return DtoFactory.of(current());
+    }
+
+    /**
+     * Гейт проверок на уровне БД для версии текущего теста.
+     * У версии без хранилища проверки пропускаются с отметкой в отчёте.
+     */
+    public static DbChecks db() {
+        return DbChecks.of(current());
     }
 }

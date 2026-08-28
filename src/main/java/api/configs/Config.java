@@ -42,4 +42,21 @@ public class Config {
     public static String getApiBaseUrl() {
         return getBackendVersion().baseUri();
     }
+
+    /**
+     * JDBC-адрес хранилища активной версии.
+     *
+     * @throws IllegalStateException если у версии внешнего хранилища нет — обращаться
+     *                               к БД в этом случае нельзя, и молчаливый null здесь
+     *                               был бы хуже явной ошибки
+     */
+    public static String getDbUrl() {
+        BackendVersion version = getBackendVersion();
+        if (!version.hasDatabase()) {
+            throw new IllegalStateException(
+                    "У версии " + version + " нет внешнего хранилища — запрос в БД невозможен. "
+                            + "Проверки БД должны идти через DbChecks, он такие версии пропускает.");
+        }
+        return version.getDbUrl();
+    }
 }

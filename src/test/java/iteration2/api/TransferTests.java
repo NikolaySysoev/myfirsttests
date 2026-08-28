@@ -1,6 +1,6 @@
 package iteration2.api;
 
-import api.dao.comparison.DaoAndModelAssertions;
+import api.dao.checks.DbChecks;
 import api.generators.RandomData;
 import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
@@ -88,7 +88,7 @@ public class TransferTests extends BaseApiTest {
     @UserSession
     @ParameterizedTest
     @MethodSource("validAmount")
-    public void userCanTransferBetweenOwnAccounts(BigDecimal transferAmount) {
+    public void userCanTransferBetweenOwnAccounts(BigDecimal transferAmount, DbChecks db) {
         //готовим данные для трансфера
         var transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(senderAccountId)
@@ -125,17 +125,15 @@ public class TransferTests extends BaseApiTest {
         assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userFirstAccountDao = DataBaseSteps.getAccountByAccountNumber(senderAccountNumber);
-        DaoAndModelAssertions.assertThat(senderAccount, userFirstAccountDao).match();
+        db.assertMatches(senderAccount, () -> DataBaseSteps.getAccountByAccountNumber(senderAccountNumber));
 
-        var userSecondAccountDao = DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber);
-        DaoAndModelAssertions.assertThat(receiverAccount, userSecondAccountDao).match();
+        db.assertMatches(receiverAccount, () -> DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber));
     }
 
     @UserSession
     @ParameterizedTest
     @MethodSource("invalidAmount")
-    public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue) {
+    public void userCanNotTransferBetweenOwnAccountsWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue, DbChecks db) {
         //готовим данные для трансфера
         var transferMoneyRequest = TransferMoneyRequest.builder()
                 .senderAccountId(senderAccountId)
@@ -169,17 +167,15 @@ public class TransferTests extends BaseApiTest {
         assertEquals(0, receiverAccountExpectedBalance.compareTo(receiverAccountBalanceAfterTransfer));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userFirstAccountDao = DataBaseSteps.getAccountByAccountNumber(senderAccountNumber);
-        DaoAndModelAssertions.assertThat(senderAccount, userFirstAccountDao).match();
+        db.assertMatches(senderAccount, () -> DataBaseSteps.getAccountByAccountNumber(senderAccountNumber));
 
-        var userSecondAccountDao = DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber);
-        DaoAndModelAssertions.assertThat(receiverAccount, userSecondAccountDao).match();
+        db.assertMatches(receiverAccount, () -> DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber));
     }
 
     @UserSession(2)
     @ParameterizedTest
     @MethodSource("validAmount")
-    public void userCanTransferOnOtherUserAccount(BigDecimal transferAmount) {
+    public void userCanTransferOnOtherUserAccount(BigDecimal transferAmount, DbChecks db) {
         //создаем счет второму пользователю (он уже создан и залогинен ApiUserSessionExtension'ом)
         var secondUserAccountResponse = SessionStorage.actAsUser(2).createAccount();
 
@@ -222,17 +218,15 @@ public class TransferTests extends BaseApiTest {
         assertEquals(0, secondUserExpectedBalance.compareTo(secondAccountBalanceAfterTransfer));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userFirstAccountDao = DataBaseSteps.getAccountByAccountNumber(senderAccountNumber);
-        DaoAndModelAssertions.assertThat(senderAccount, userFirstAccountDao).match();
+        db.assertMatches(senderAccount, () -> DataBaseSteps.getAccountByAccountNumber(senderAccountNumber));
 
-        var userSecondAccountDao = DataBaseSteps.getAccountByAccountNumber(receiverUserAccountNumber);
-        DaoAndModelAssertions.assertThat(receiverAccount, userSecondAccountDao).match();
+        db.assertMatches(receiverAccount, () -> DataBaseSteps.getAccountByAccountNumber(receiverUserAccountNumber));
     }
 
     @UserSession(2)
     @ParameterizedTest
     @MethodSource("invalidAmount")
-    public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue) {
+    public void userCanNotTransferOnOtherUserAccountWhenInvalidAmount(BigDecimal transferAmount, ApiError errorValue, DbChecks db) {
         //создаем счет второму пользователю
         var secondUserAccountResponse = SessionStorage.actAsUser(2).createAccount();
 
@@ -273,17 +267,15 @@ public class TransferTests extends BaseApiTest {
         assertEquals(0, secondUserExpectedBalance.compareTo(secondUserAccountBalanceAfterTransfer));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userFirstAccountDao = DataBaseSteps.getAccountByAccountNumber(senderAccountNumber);
-        DaoAndModelAssertions.assertThat(senderAccount, userFirstAccountDao).match();
+        db.assertMatches(senderAccount, () -> DataBaseSteps.getAccountByAccountNumber(senderAccountNumber));
 
-        var userSecondAccountDao = DataBaseSteps.getAccountByAccountNumber(receiverUserAccountNumber);
-        DaoAndModelAssertions.assertThat(receiverAccount, userSecondAccountDao).match();
+        db.assertMatches(receiverAccount, () -> DataBaseSteps.getAccountByAccountNumber(receiverUserAccountNumber));
     }
 
     @UserSession
     @ParameterizedTest
     @MethodSource("insufficientFundsData")
-    public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, ApiError errorValue) {
+    public void userCanNotTransferWhenAmountMoreThanBalance(BigDecimal transferAmount, ApiError errorValue, DbChecks db) {
         //готовим данные для трансфера
         //счета поменяны местами, чтобы с нулевого переводить на счет с деньгами
         var transferMoneyRequest = TransferMoneyRequest.builder()
@@ -312,10 +304,8 @@ public class TransferTests extends BaseApiTest {
         assertEquals(0, expectedBalance.compareTo(receiverBalanceAfterTransfer));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userFirstAccountDao = DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber);
-        DaoAndModelAssertions.assertThat(receiverAccount, userFirstAccountDao).match();
+        db.assertMatches(receiverAccount, () -> DataBaseSteps.getAccountByAccountNumber(receiverAccountNumber));
 
-        var userSecondAccountDao = DataBaseSteps.getAccountByAccountNumber(senderAccountNumber);
-        DaoAndModelAssertions.assertThat(senderAccount, userSecondAccountDao).match();
+        db.assertMatches(senderAccount, () -> DataBaseSteps.getAccountByAccountNumber(senderAccountNumber));
     }
 }

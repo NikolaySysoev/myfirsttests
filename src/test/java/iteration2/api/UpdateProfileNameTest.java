@@ -1,6 +1,6 @@
 package iteration2.api;
 
-import api.dao.comparison.DaoAndModelAssertions;
+import api.dao.checks.DbChecks;
 import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
 import api.models.BaseModel;
@@ -57,7 +57,7 @@ public class UpdateProfileNameTest extends BaseApiTest {
 
     @UserSession
     @Test
-    public void userCanChangeNameWhenValidData(DtoFactory dto) {
+    public void userCanChangeNameWhenValidData(DtoFactory dto, DbChecks db) {
         var changeNameRequest = dto.changeName(DEFAULT_VALID_NAME);
 
         BaseModel changeNameResponse = new ValidatedCrudRequester<BaseModel>(
@@ -83,14 +83,13 @@ public class UpdateProfileNameTest extends BaseApiTest {
         assertEquals(DEFAULT_VALID_NAME, profileName);
 
         //Проверка в БД
-        var userDao = DataBaseSteps.getUserById(userId);
-        DaoAndModelAssertions.assertThat(userProfile, userDao).match();
+        db.assertMatches(userProfile, () -> DataBaseSteps.getUserById(userId));
     }
 
     @UserSession
     @ParameterizedTest
     @MethodSource("invalidName")
-    public void userCanNotChangeNameWhenInvalidData(String newName, ApiError errorValue, DtoFactory dto) {
+    public void userCanNotChangeNameWhenInvalidData(String newName, ApiError errorValue, DtoFactory dto, DbChecks db) {
         var changeName = dto.changeName(newName);
 
         new CrudRequester(
@@ -106,7 +105,6 @@ public class UpdateProfileNameTest extends BaseApiTest {
         assertEquals(initialName, profileName);
 
         //Проверка в БД
-        var userDao = DataBaseSteps.getUserById(userId);
-        DaoAndModelAssertions.assertThat(userProfile, userDao).match();
+        db.assertMatches(userProfile, () -> DataBaseSteps.getUserById(userId));
     }
 }

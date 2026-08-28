@@ -1,6 +1,6 @@
 package iteration2.api;
 
-import api.dao.comparison.DaoAndModelAssertions;
+import api.dao.checks.DbChecks;
 import api.generators.RandomData;
 import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
@@ -87,7 +87,7 @@ public class DepositTest extends BaseApiTest {
     @ParameterizedTest
     @MethodSource("depositValidData")
     @DisplayName("Юзер может пополнить акк")
-    public void userCanDepositOnHisAccount(BigDecimal amount, DtoFactory dto) {
+    public void userCanDepositOnHisAccount(BigDecimal amount, DtoFactory dto, DbChecks db) {
         //депозит: DTO собирается под активную версию контракта
         var request = dto.deposit(userAccountId, amount);
 
@@ -113,15 +113,14 @@ public class DepositTest extends BaseApiTest {
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(userAccountNumber);
-        DaoAndModelAssertions.assertThat(customerProfile.getFirst(), userAccountDao).match();
+        db.assertMatches(customerProfile.getFirst(), () -> DataBaseSteps.getAccountByAccountNumber(userAccountNumber));
     }
 
     @UserSession
     @ParameterizedTest
     @MethodSource("depositInvalidData")
     @DisplayName("Юзер не может пополнить при невалидных данных")
-    public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal amount, ApiError error, DtoFactory dto) {
+    public void userCanNotDepositOnHisAccountWithInvalidData(BigDecimal amount, ApiError error, DtoFactory dto, DbChecks db) {
         var depositMoneyRequest = dto.deposit(userAccountId, amount);
 
         new CrudRequester(
@@ -139,15 +138,14 @@ public class DepositTest extends BaseApiTest {
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
-        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(userAccountNumber);
-        DaoAndModelAssertions.assertThat(customerProfile.getFirst(), userAccountDao).match();
+        db.assertMatches(customerProfile.getFirst(), () -> DataBaseSteps.getAccountByAccountNumber(userAccountNumber));
     }
 
     @UserSession(2)
     @ParameterizedTest
     @MethodSource("depositInvalidAccount")
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
-    public void userCanNotDepositOnInvalidAccount(ApiError error, DtoFactory dto) {
+    public void userCanNotDepositOnInvalidAccount(ApiError error, DtoFactory dto, DbChecks db) {
 
         var secondUserAccount = SessionStorage.actAsUser(2).createAccount();
         var secondUserAccountId = secondUserAccount.getId();
@@ -173,7 +171,6 @@ public class DepositTest extends BaseApiTest {
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
 
         //Проверка в БД. Сравнивается Гет юзер аккаунт на втором аккаунте и запись в БД по аккаунт номеру второго юзера
-        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(secondUserAccountNumber);
-        DaoAndModelAssertions.assertThat(secondCustomerAccount.getFirst(), userAccountDao).match();
+        db.assertMatches(secondCustomerAccount.getFirst(), () -> DataBaseSteps.getAccountByAccountNumber(secondUserAccountNumber));
     }
 }

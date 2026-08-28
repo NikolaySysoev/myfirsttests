@@ -1,6 +1,7 @@
 package common.extensions;
 
 import api.configs.BackendVersion;
+import api.dao.checks.DbChecks;
 import api.models.factory.DtoFactory;
 import common.annotations.ApiVersion;
 import common.versioning.ApiVersionContext;
@@ -32,8 +33,8 @@ import org.junit.platform.commons.support.AnnotationSupport;
  * регистрации.
  * <p>
  * Дополнительно работает как {@link ParameterResolver}: тест может принять
- * {@link DtoFactory} или {@link BackendVersion} параметром вместо обращения
- * к статическому контексту.
+ * {@link DtoFactory}, {@link DbChecks} или {@link BackendVersion} параметром
+ * вместо обращения к статическому контексту.
  */
 public class ApiVersionExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
@@ -83,14 +84,20 @@ public class ApiVersionExtension implements BeforeEachCallback, AfterEachCallbac
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Class<?> type = parameterContext.getParameter().getType();
-        return type == DtoFactory.class || type == BackendVersion.class;
+        return type == DtoFactory.class
+                || type == DbChecks.class
+                || type == BackendVersion.class;
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
         Class<?> type = parameterContext.getParameter().getType();
-        return type == DtoFactory.class
-                ? ApiVersionContext.dto()
-                : ApiVersionContext.current();
+        if (type == DtoFactory.class) {
+            return ApiVersionContext.dto();
+        }
+        if (type == DbChecks.class) {
+            return ApiVersionContext.db();
+        }
+        return ApiVersionContext.current();
     }
 }
