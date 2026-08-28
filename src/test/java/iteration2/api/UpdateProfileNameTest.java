@@ -1,5 +1,6 @@
 package iteration2.api;
 
+import api.dao.comparison.DaoAndModelAssertions;
 import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
 import api.models.BaseModel;
@@ -7,6 +8,7 @@ import api.models.factory.DtoFactory;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.steps.DataBaseSteps;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
 import common.annotations.UserSession;
@@ -22,29 +24,32 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class UpdateProfileNameTest extends BaseApiTest {
-    private static final String DEFAULT_VALID_NAME = "Nikolay Sysoev";
+    private static final String DEFAULT_VALID_NAME = "Name Surname";
     private static final String DEFAULT_SUCCESS_MESSAGE = "Profile updated successfully";
 
     private String initialName = null;
+    private long userId;
 
     @BeforeEach
     public void setup(){
         // пользователь уже создан ApiUserSessionExtension'ом (по @UserSession на тестовом методе)
 
         //вытаскиваем имя по умолчанию, заданное после создания пользователя
-        initialName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        var userAccount = SessionStorage.actAsUser().getCustomerProfile();
+        initialName = userAccount.getName();
+        userId = userAccount.getId();
     }
 
     public static Stream<Arguments> invalidName() {
         return Stream.of(
-                Arguments.of("Nikolay", ApiError.CHANGE_NAME_ERROR),
-                Arguments.of("Nikolay Nikolay Nikolay", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Name Name", ApiError.CHANGE_NAME_ERROR),
                 Arguments.of(" ", ApiError.CHANGE_NAME_ERROR),
-                Arguments.of("Nikolay123 Sysoev", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name123 Surname", ApiError.CHANGE_NAME_ERROR),
                 Arguments.of("Anna-Maria Ivanova", ApiError.CHANGE_NAME_ERROR),
-                Arguments.of("Nikolay Sysoev123", ApiError.CHANGE_NAME_ERROR),
-                Arguments.of("Nikolay^&*(! Sysoev", ApiError.CHANGE_NAME_ERROR),
-                Arguments.of("Nikolay Sysoev^&*(!", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Surname123", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name^&*(! Surname", ApiError.CHANGE_NAME_ERROR),
+                Arguments.of("Name Surname^&*(!", ApiError.CHANGE_NAME_ERROR),
                 Arguments.of("12312 ^&*(!", ApiError.CHANGE_NAME_ERROR)
 //                Arguments.of(null, ApiError.CHANGE_NAME_ERROR)  - выключено, есть баг на бэке. Падает с 500-й ошибкой, вместо обработки и 400-й ошибки
         );
@@ -72,9 +77,14 @@ public class UpdateProfileNameTest extends BaseApiTest {
         dto.successMessage(changeNameResponse)
                 .ifPresent(message -> softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE));
 
-        String profileName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        var userProfile = SessionStorage.actAsUser().getCustomerProfile();
+        String profileName = userProfile.getName();
 
         assertEquals(DEFAULT_VALID_NAME, profileName);
+
+        //Проверка в БД
+        var userDao = DataBaseSteps.getUserById(userId);
+        DaoAndModelAssertions.assertThat(userProfile, userDao).match();
     }
 
     @UserSession
@@ -90,8 +100,13 @@ public class UpdateProfileNameTest extends BaseApiTest {
         )
                 .put(changeName);
 
-        String newUserName = SessionStorage.actAsUser().getCustomerProfile().getName();
+        var userProfile = SessionStorage.actAsUser().getCustomerProfile();
+        String profileName = userProfile.getName();
 
-        assertEquals(initialName, newUserName);
+        assertEquals(initialName, profileName);
+
+        //Проверка в БД
+        var userDao = DataBaseSteps.getUserById(userId);
+        DaoAndModelAssertions.assertThat(userProfile, userDao).match();
     }
 }

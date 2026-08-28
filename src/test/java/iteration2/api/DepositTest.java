@@ -1,5 +1,6 @@
 package iteration2.api;
 
+import api.dao.comparison.DaoAndModelAssertions;
 import api.generators.RandomData;
 import api.models.domain.ApiError;
 import api.models.assertions.ModelAssertions;
@@ -8,6 +9,7 @@ import api.models.BaseModel;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.steps.DataBaseSteps;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
 import common.annotations.UserSession;
@@ -36,6 +38,7 @@ public class DepositTest extends BaseApiTest {
 
     private BigDecimal userInitialBalance;
     private long userAccountId;
+    private String userAccountNumber;
     private static final BigDecimal randomBalance = new BigDecimal(RandomData.getRandomAmountAsString());
 
     @BeforeEach
@@ -46,6 +49,7 @@ public class DepositTest extends BaseApiTest {
         //вытаскиваем айдишку счета и стартовый баланс
         userAccountId = createAccountResponse.getId();
         userInitialBalance = createAccountResponse.getBalance();
+        userAccountNumber = createAccountResponse.getAccountNumber();
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -98,7 +102,8 @@ public class DepositTest extends BaseApiTest {
         ModelAssertions.assertThatModels(request, response).match();
 
         //баланс после депозита через шаги пользователя из хранилища
-        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser().getAccountBalance(userAccountId);
+        var customerProfile = SessionStorage.actAsUser().getAccounts();
+        BigDecimal balanceAfterDeposit = customerProfile.getFirst().getBalance();
         BigDecimal expectedBalance = userInitialBalance.add(amount);
 
         //сравниваем 0 и результат сравнения двух переменных - ожидаемый баланс и баланс после депозита.
@@ -106,6 +111,10 @@ public class DepositTest extends BaseApiTest {
         // если ожидаемый < депозита -> компаратор вернет отр. число
         // если ожидаемый > депозита -> компаратор вернет положит. число
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
+
+        //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
+        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(userAccountNumber);
+        DaoAndModelAssertions.assertThat(customerProfile.getFirst(), userAccountDao).match();
     }
 
     @UserSession
@@ -123,9 +132,15 @@ public class DepositTest extends BaseApiTest {
                 .post(depositMoneyRequest);
 
         BigDecimal expectedBalance = userInitialBalance;
-        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser().getAccountBalance(userAccountId);
+
+        var customerProfile = SessionStorage.actAsUser().getAccounts();
+        BigDecimal balanceAfterDeposit = customerProfile.getFirst().getBalance();
 
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
+
+        //Проверка в БД. Сравнивается Гет юзер аккаунт и запись в БД по аккаунт номеру
+        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(userAccountNumber);
+        DaoAndModelAssertions.assertThat(customerProfile.getFirst(), userAccountDao).match();
     }
 
     @UserSession(2)
@@ -134,7 +149,9 @@ public class DepositTest extends BaseApiTest {
     @DisplayName("Юзер не может пополнить чужой/не сущ. аккаунт")
     public void userCanNotDepositOnInvalidAccount(ApiError error, DtoFactory dto) {
 
-        var secondUserAccountId = SessionStorage.actAsUser(2).createAccount().getId();
+        var secondUserAccount = SessionStorage.actAsUser(2).createAccount();
+        var secondUserAccountId = secondUserAccount.getId();
+        var secondUserAccountNumber = secondUserAccount.getAccountNumber();
 
         //создаем объект запроса на депозит под активную версию контракта
         var depositMoneyRequest = dto.deposit(secondUserAccountId, randomBalance);
@@ -149,8 +166,14 @@ public class DepositTest extends BaseApiTest {
 
         //проверяем акк 2го пользователя, убеждаемся что баланс не изменился
         BigDecimal expectedBalance = new BigDecimal("0.00");
-        BigDecimal balanceAfterDeposit = SessionStorage.actAsUser(2).getAccountBalance(secondUserAccountId);
+
+        var secondCustomerAccount = SessionStorage.actAsUser(2).getAccounts();
+        BigDecimal balanceAfterDeposit = secondCustomerAccount.getFirst().getBalance();
 
         assertEquals(0, expectedBalance.compareTo(balanceAfterDeposit));
+
+        //Проверка в БД. Сравнивается Гет юзер аккаунт на втором аккаунте и запись в БД по аккаунт номеру второго юзера
+        var userAccountDao = DataBaseSteps.getAccountByAccountNumber(secondUserAccountNumber);
+        DaoAndModelAssertions.assertThat(secondCustomerAccount.getFirst(), userAccountDao).match();
     }
 }

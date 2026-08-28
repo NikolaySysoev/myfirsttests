@@ -76,6 +76,12 @@ public class UserSteps {
         return getAccountBalance(getAccounts(), accountId);
     }
 
+    public Account getAccountByAccountNumber(String accountNumber){
+        return getAccounts().stream()
+                .filter(account -> account.getAccountNumber().equals(accountNumber))
+                .findAny().orElse(null);
+    }
+
     public CustomerProfile getCustomerProfile() {
         BaseModel response = new ValidatedCrudRequester<BaseModel>(
                 RequestSpecs.authAsUser(username, password),
