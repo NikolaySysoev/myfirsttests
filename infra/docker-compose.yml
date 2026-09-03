@@ -1,6 +1,6 @@
 services:
   backend:
-    image: nobugsme/nbank:with_database_with_fix_with_swagger
+    image: nobugsme/nbank:with_fraud_check_with_transfer_fix
     ports:
       - "4111:4111"
     environment:
@@ -8,6 +8,13 @@ services:
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+      # Адрес мока фрод-сервиса. Порт обязан совпадать с FraudCheckWireMockExtension:
+      # мок слушает на хосте, бэк стучится сюда. Разойдутся — бэк уйдёт в аварийную
+      # ветку, и тесты на решения фрод-сервиса упадут.
+      # Имя переменной соответствует property бэка fraud.detection.service.url;
+      # изменения подхватываются только пересозданием контейнера (up -d --force-recreate),
+      # docker compose restart читает старый конфиг.
+      - FRAUD_DETECTION_SERVICE_URL=http://host.docker.internal:8080
     depends_on:
       - postgres
     networks:
