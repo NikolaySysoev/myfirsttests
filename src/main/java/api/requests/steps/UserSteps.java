@@ -3,11 +3,13 @@ package api.requests.steps;
 import api.models.BaseModel;
 import api.models.domain.Account;
 import api.models.domain.CustomerProfile;
+import api.models.v2.requests.TransferWithFraudCheckRequest;
 import api.requests.skelethon.Endpoint;
 import api.requests.skelethon.requesters.CrudRequester;
 import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
+import com.fasterxml.jackson.databind.ser.Serializers;
 import common.versioning.ApiVersionContext;
 
 import java.math.BigDecimal;
@@ -54,6 +56,21 @@ public class UserSteps {
         return new ValidatedCrudRequester<BaseModel>(
                 RequestSpecs.authAsUser(username, password),
                 Endpoint.ACCOUNTS_DEPOSIT,
+                ResponseSpecs.requestReturnsOK()
+        )
+                .post(request);
+    }
+
+    public BaseModel transferWithFraudCheck(long senderAccountId, long receiverAccountId, BigDecimal amount){
+        var request = new TransferWithFraudCheckRequest(
+                senderAccountId,
+                receiverAccountId,
+                amount
+        );
+
+        return new ValidatedCrudRequester<BaseModel>(
+                RequestSpecs.authAsUser(username, password),
+                Endpoint.TRANSFER_WITH_FRAUD_CHECK,
                 ResponseSpecs.requestReturnsOK()
         )
                 .post(request);

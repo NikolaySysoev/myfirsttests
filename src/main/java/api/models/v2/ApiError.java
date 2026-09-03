@@ -18,11 +18,11 @@ import lombok.Getter;
 public enum ApiError {
 
     // --- проверено на живом бэке ---
-    DEPOSIT_LOWER_BOUNDARY("amount[0]", "must be greater than 0"),
+    DEPOSIT_LOWER_BOUNDARY("message", "Invalid account or amount"),
     DEPOSIT_HIGHER_BOUNDARY("message", "Deposit amount exceeds the 5000 limit"),
     DEPOSIT_FORBIDDEN("message", "Unauthorized access to account"),
     // нижняя граница у депозита и трансфера отдаётся одной и той же валидацией поля amount
-    TRANSFER_LOWER_BOUNDARY("amount[0]", "must be greater than 0"),
+    TRANSFER_LOWER_BOUNDARY("message", "must be greater than 0"),
 
     // --- НЕ проверено: тексты и пути перенесены из легаси, уточнить при первом прогоне
     //     соответствующих тестов на V2 ---

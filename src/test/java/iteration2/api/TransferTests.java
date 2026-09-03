@@ -12,6 +12,7 @@ import api.requests.skelethon.requesters.ValidatedCrudRequester;
 import api.requests.steps.DataBaseSteps;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
+import common.annotations.ApiVersion;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,9 +23,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 
+import static api.configs.BackendVersion.V1;
 import static iteration2.TestUtils.repeat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@ApiVersion(V1) //тесты на трансфер гонятся на старой версии бэка, т.к. новая работает с фрод сервисом в отдельном файле
 public class TransferTests extends BaseApiTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
 
