@@ -1,5 +1,10 @@
 package common.annotations;
 
+import common.mocks.fraud.FraudCheckStatus;
+import common.mocks.fraud.FraudDecision;
+import common.mocks.fraud.FraudReason;
+import common.mocks.fraud.FraudRiskScore;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -72,24 +77,24 @@ public @interface FraudCheckMock {
      * <p>
      * Влияет ли это поле на решение бэка — не проверено. Ответ он принимает, если
      * пришёл 200 и тело не пустое; дальше status уезжает внутрь его FraudCheckResult,
-     * и там значение "SUCCESS" встречается. Выяснится тестом со {@code status = "ERROR"}.
+     * и там значение "SUCCESS" встречается. Выяснится тестом со {@code status = FraudCheckStatus.ERROR}.
      */
-    String status() default "SUCCESS";
+    FraudCheckStatus status() default FraudCheckStatus.SUCCESS;
 
     /**
      * Вердикт фрод-сервиса. Из него nbank выводит статус перевода в своём ответе.
      */
-    String decision() default "APPROVED";
+    FraudDecision decision() default FraudDecision.APPROVED;
 
     /**
      * The risk score (0.0 to 1.0)
      */
-    double riskScore() default 0.2;
+    double riskScore() default FraudRiskScore.LOW_RISK;
 
     /**
      * The reason for the fraud check result
      */
-    String reason() default "Low risk transaction";
+    FraudReason reason() default FraudReason.LOW_RISK;
 
     /**
      * Whether manual review is required

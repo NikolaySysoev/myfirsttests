@@ -94,10 +94,10 @@ public class FraudCheckWireMockExtension implements BeforeEachCallback, AfterEac
                         "  \"requiresManualReview\": %s,\n" +
                         "  \"additionalVerificationRequired\": %s\n" +
                         "}",
-                config.status(),
-                config.decision(),
+                config.status().name(),
+                config.decision().name(),
                 config.riskScore(),
-                config.reason(),
+                config.reason().getText(),
                 config.requiresManualReview(),
                 config.additionalVerificationRequired());
     }

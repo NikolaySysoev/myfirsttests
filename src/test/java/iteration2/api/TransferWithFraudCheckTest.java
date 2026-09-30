@@ -2,6 +2,8 @@ package iteration2.api;
 
 import api.dao.checks.DbChecks;
 import api.models.assertions.ModelAssertions;
+import api.models.v2.FraudFallbackReason;
+import api.models.v2.TransferStatus;
 import api.models.v2.requests.TransferWithFraudCheckRequest;
 import api.models.v2.responses.TransferWithFraudCheckResponse;
 import api.requests.steps.DataBaseSteps;
@@ -9,6 +11,8 @@ import common.annotations.ApiVersion;
 import common.annotations.FraudCheckMock;
 import common.annotations.UserSession;
 import common.extensions.FraudCheckWireMockExtension;
+import common.mocks.fraud.FraudReason;
+import common.mocks.fraud.FraudRiskScore;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,11 +26,19 @@ import static api.configs.BackendVersion.V2;
 import static common.annotations.FraudCheckMock.Behaviour.CONNECTION_ERROR;
 import static common.annotations.FraudCheckMock.Behaviour.HTTP_ERROR;
 import static common.annotations.FraudCheckMock.Behaviour.SERVICE_DOWN;
+import static common.mocks.fraud.FraudCheckStatus.SUCCESS;
+import static common.mocks.fraud.FraudDecision.APPROVED;
+import static common.mocks.fraud.FraudDecision.BLOCKED;
+import static common.mocks.fraud.FraudDecision.REVIEW_REQUIRED;
+import static common.mocks.fraud.FraudDecision.VERIFICATION_REQUIRED;
 
 @ApiVersion(V2)
 @ExtendWith(FraudCheckWireMockExtension.class)
 public class TransferWithFraudCheckTest extends BaseApiTest {
-
+    private static final int FRAUD_SERVICE_ERROR_STATUS = 500;
+    private static final double FALLBACK_RISK_SCORE = 0.5;
+    private static final String TRANSACTION_ID_FIELD = "transactionId";
+    private static final String FRAUD_REASON_FIELD = "fraudReason";
     private final BigDecimal amountToDeposit =
             new BigDecimal(Math.random() * 4999.9 + 0.1).setScale(2, RoundingMode.HALF_UP);
     private BigDecimal transferAmount;
@@ -69,10 +81,10 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @UserSession(2)
     @DisplayName("APPROVED: перевод проходит сразу")
     @FraudCheckMock(
-            status = "SUCCESS",
-            decision = "APPROVED",
-            riskScore = 0.2,
-            reason = "Low risk transaction",
+            status = SUCCESS,
+            decision = APPROVED,
+            riskScore = FraudRiskScore.LOW_RISK,
+            reason = FraudReason.LOW_RISK,
             requiresManualReview = false,
             additionalVerificationRequired = false
     )
@@ -93,26 +105,18 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
         ModelAssertions.assertThatModels(transferRequest, transferResponse).match();
 
         var expectedResponse = TransferWithFraudCheckResponse.builder()
-                .status("APPROVED")
-                .message("Transfer approved and processed immediately")
+                .status(TransferStatus.APPROVED.getStatus())
+                .message(TransferStatus.APPROVED.getMessage())
                 .amount(transferAmount)
                 .senderAccountId(senderAccountId)
                 .receiverAccountId(receiverAccountId)
-                .fraudRiskScore(0.2)
-                .fraudReason("Low risk transaction")
+                .fraudRiskScore(FraudRiskScore.LOW_RISK)
+                .fraudReason(FraudReason.LOW_RISK.getText())
                 .requiresManualReview(false)
                 .requiresVerification(false)
                 .build();
 
-        // результат фрод-проверки: сверяем ответ целиком с эталоном.
-        // transactionId генерирует бэк, в эталоне его нет — исключаем.
-        // BigDecimal.equals учитывает scale (2141.13 != 2141.130), поэтому
-        // для этого типа сравниваем через compareTo.
-        softly.assertThat(transferResponse)
-                .usingRecursiveComparison()
-                .ignoringFields("transactionId")
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                .isEqualTo(expectedResponse);
+        assertMatchesExpected(transferResponse, expectedResponse, TRANSACTION_ID_FIELD);
 
         assertMoneyMoved(transferAmount, db);
     }
@@ -121,10 +125,10 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @UserSession(2)
     @DisplayName("BLOCKED: перевод заблокирован, деньги не двигаются")
     @FraudCheckMock(
-            status = "SUCCESS",
-            decision = "BLOCKED",
-            riskScore = 0.95,
-            reason = "High risk transaction",
+            status = SUCCESS,
+            decision = BLOCKED,
+            riskScore = FraudRiskScore.HIGH_RISK,
+            reason = FraudReason.HIGH_RISK,
             requiresManualReview = false,
             additionalVerificationRequired = false
     )
@@ -144,22 +148,18 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
         ModelAssertions.assertThatModels(transferRequest, transferResponse).match();
 
         var expectedResponse = TransferWithFraudCheckResponse.builder()
-                .status("BLOCKED")
-                .message("Transfer blocked due to fraud detection")
+                .status(TransferStatus.BLOCKED.getStatus())
+                .message(TransferStatus.BLOCKED.getMessage())
                 .amount(transferAmount)
                 .senderAccountId(senderAccountId)
                 .receiverAccountId(receiverAccountId)
-                .fraudRiskScore(0.95)
-                .fraudReason("High risk transaction")
+                .fraudRiskScore(FraudRiskScore.HIGH_RISK)
+                .fraudReason(FraudReason.HIGH_RISK.getText())
                 .requiresManualReview(false)
                 .requiresVerification(false)
                 .build();
 
-        softly.assertThat(transferResponse)
-                .usingRecursiveComparison()
-                .ignoringFields("transactionId")
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                .isEqualTo(expectedResponse);
+        assertMatchesExpected(transferResponse, expectedResponse, TRANSACTION_ID_FIELD);
 
         assertMoneyNotMoved(db);
     }
@@ -168,10 +168,10 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @UserSession(2)
     @DisplayName("REVIEW_REQUIRED: перевод уходит на ручную проверку")
     @FraudCheckMock(
-            status = "SUCCESS",
-            decision = "REVIEW_REQUIRED",
-            riskScore = 0.6,
-            reason = "Suspicious activity detected",
+            status = SUCCESS,
+            decision = REVIEW_REQUIRED,
+            riskScore = FraudRiskScore.SUSPICIOUS_ACTIVITY,
+            reason = FraudReason.SUSPICIOUS_ACTIVITY,
             requiresManualReview = true,
             additionalVerificationRequired = false
     )
@@ -191,22 +191,18 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
         ModelAssertions.assertThatModels(transferRequest, transferResponse).match();
 
         var expectedResponse = TransferWithFraudCheckResponse.builder()
-                .status("MANUAL_REVIEW_REQUIRED")
-                .message("Transfer requires manual review")
+                .status(TransferStatus.MANUAL_REVIEW_REQUIRED.getStatus())
+                .message(TransferStatus.MANUAL_REVIEW_REQUIRED.getMessage())
                 .amount(transferAmount)
                 .senderAccountId(senderAccountId)
                 .receiverAccountId(receiverAccountId)
-                .fraudRiskScore(0.6)
-                .fraudReason("Suspicious activity detected")
+                .fraudRiskScore(FraudRiskScore.SUSPICIOUS_ACTIVITY)
+                .fraudReason(FraudReason.SUSPICIOUS_ACTIVITY.getText())
                 .requiresManualReview(true)
                 .requiresVerification(false)
                 .build();
 
-        softly.assertThat(transferResponse)
-                .usingRecursiveComparison()
-                .ignoringFields("transactionId")
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                .isEqualTo(expectedResponse);
+        assertMatchesExpected(transferResponse, expectedResponse, TRANSACTION_ID_FIELD);
 
         // до ручной проверки деньги не переводятся
         assertMoneyNotMoved(db);
@@ -216,10 +212,10 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @UserSession(2)
     @DisplayName("VERIFICATION_REQUIRED: требуется дополнительное подтверждение")
     @FraudCheckMock(
-            status = "SUCCESS",
-            decision = "VERIFICATION_REQUIRED",
-            riskScore = 0.45,
-            reason = "Additional verification needed",
+            status = SUCCESS,
+            decision = VERIFICATION_REQUIRED,
+            riskScore = FraudRiskScore.VERIFICATION_NEEDED,
+            reason = FraudReason.VERIFICATION_NEEDED,
             requiresManualReview = false,
             additionalVerificationRequired = true
     )
@@ -239,22 +235,18 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
         ModelAssertions.assertThatModels(transferRequest, transferResponse).match();
 
         var expectedResponse = TransferWithFraudCheckResponse.builder()
-                .status("VERIFICATION_REQUIRED")
-                .message("Additional verification required")
+                .status(TransferStatus.VERIFICATION_REQUIRED.getStatus())
+                .message(TransferStatus.VERIFICATION_REQUIRED.getMessage())
                 .amount(transferAmount)
                 .senderAccountId(senderAccountId)
                 .receiverAccountId(receiverAccountId)
-                .fraudRiskScore(0.45)
-                .fraudReason("Additional verification needed")
+                .fraudRiskScore(FraudRiskScore.VERIFICATION_NEEDED)
+                .fraudReason(FraudReason.VERIFICATION_NEEDED.getText())
                 .requiresManualReview(false)
                 .requiresVerification(true)
                 .build();
 
-        softly.assertThat(transferResponse)
-                .usingRecursiveComparison()
-                .ignoringFields("transactionId")
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                .isEqualTo(expectedResponse);
+        assertMatchesExpected(transferResponse, expectedResponse, TRANSACTION_ID_FIELD);
 
         // до подтверждения деньги не переводятся
         assertMoneyNotMoved(db);
@@ -263,9 +255,9 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @Test
     @UserSession(2)
     @DisplayName("Фрод-сервис отвечает 500: бэк уходит в ручную проверку")
-    @FraudCheckMock(behaviour = HTTP_ERROR, httpStatus = 500)
+    @FraudCheckMock(behaviour = HTTP_ERROR, httpStatus = FRAUD_SERVICE_ERROR_STATUS)
     public void transferFallsBackToManualReviewWhenFraudServiceReturnsError(DbChecks db) {
-        assertFallsBackToManualReview("Unexpected error during fraud check: 500", db);
+        assertFallsBackToManualReview(FraudFallbackReason.UNEXPECTED_ERROR.withHttpStatus(FRAUD_SERVICE_ERROR_STATUS), db);
     }
 
     @Test
@@ -273,7 +265,7 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @DisplayName("Фрод-сервис рвёт соединение: бэк уходит в ручную проверку")
     @FraudCheckMock(behaviour = CONNECTION_ERROR)
     public void transferFallsBackToManualReviewWhenConnectionIsReset(DbChecks db) {
-        assertFallsBackToManualReview("Fraud detection service is currently unavailable", db);
+        assertFallsBackToManualReview(FraudFallbackReason.SERVICE_UNAVAILABLE.getText(), db);
     }
 
     @Test
@@ -281,8 +273,11 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
     @DisplayName("Фрод-сервис не поднят: бэк уходит в ручную проверку")
     @FraudCheckMock(behaviour = SERVICE_DOWN)
     public void transferFallsBackToManualReviewWhenServiceIsDown(DbChecks db) {
-        assertFallsBackToManualReview("Fraud detection service is currently unavailable", db);
+        assertFallsBackToManualReview(FraudFallbackReason.SERVICE_UNAVAILABLE.getText(), db);
     }
+
+
+    // ========= HELPERS =========
 
     // три кейса недоступности сервиса различаются настройкой мока и текстом причины,
     // остальной ответ у них общий — аварийная ветка бэка: перевод не проходит и уходит на ручную проверку.
@@ -302,26 +297,36 @@ public class TransferWithFraudCheckTest extends BaseApiTest {
         ModelAssertions.assertThatModels(transferRequest, transferResponse).match();
 
         var expectedResponse = TransferWithFraudCheckResponse.builder()
-                .status("MANUAL_REVIEW_REQUIRED")
-                .message("Transfer requires manual review")
+                .status(TransferStatus.MANUAL_REVIEW_REQUIRED.getStatus())
+                .message(TransferStatus.MANUAL_REVIEW_REQUIRED.getMessage())
                 .amount(transferAmount)
                 .senderAccountId(senderAccountId)
                 .receiverAccountId(receiverAccountId)
-                .fraudRiskScore(0.5)
+                .fraudRiskScore(FALLBACK_RISK_SCORE)
                 .requiresManualReview(true)
                 .requiresVerification(false)
                 .build();
 
-        softly.assertThat(transferResponse)
-                .usingRecursiveComparison()
-                .ignoringFields("transactionId", "fraudReason")
-                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-                .isEqualTo(expectedResponse);
+        assertMatchesExpected(transferResponse, expectedResponse, TRANSACTION_ID_FIELD, FRAUD_REASON_FIELD);
 
         softly.assertThat(((TransferWithFraudCheckResponse) transferResponse).getFraudReason())
                 .startsWith(expectedFraudReasonPrefix);
 
         assertMoneyNotMoved(db);
+    }
+    
+    // результат фрод-проверки: сверяем ответ целиком с эталоном.
+    // transactionId генерирует бэк, в эталоне его нет — его передают в ignoredFields
+    // (см. TRANSACTION_ID_FIELD).
+    // BigDecimal.equals учитывает scale (2141.13 != 2141.130), поэтому
+    // для этого типа сравниваем через compareTo.
+    private void assertMatchesExpected(Object actual, TransferWithFraudCheckResponse expected,
+                                       String... ignoredFields) {
+        softly.assertThat(actual)
+                .usingRecursiveComparison()
+                .ignoringFields(ignoredFields)
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(expected);
     }
 
     // деньги списались у отправителя и пришли получателю, в БД лежит то же самое
