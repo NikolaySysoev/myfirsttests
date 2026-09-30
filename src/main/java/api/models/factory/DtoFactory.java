@@ -9,7 +9,6 @@ import api.models.domain.ExpectedError;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Абстрактная фабрика DTO: собирает запросы под активную версию контракта
@@ -68,16 +67,16 @@ public interface DtoFactory {
     /** Ответ с профилем пользователя -> нейтральный профиль. */
     CustomerProfile customerProfile(BaseModel getCustomerProfileResponse);
 
-    /** Ответ на смену имени -> нейтральный профиль. */
-    CustomerProfile changedName(BaseModel changeNameResponse);
-
     /**
      * Сообщение об успехе из ответа на смену имени.
      * <p>
-     * Легаси отдаёт "Profile updated successfully", в актуальной версии такого поля
-     * в ответе нет вовсе — поэтому {@link Optional}, а не строка.
+     * Раньше здесь был {@link java.util.Optional}: одна из версий сообщение не
+     * возвращала. Сейчас оно есть в обеих, и Optional стал вреден — при возврате
+     * поля в контракт реализацию можно было забыть обновить, а проверка в тесте
+     * тихо переставала выполняться. Обычный String заставляет компилятор пройтись
+     * по обеим реализациям при любом изменении сигнатуры.
      */
-    Optional<String> successMessage(BaseModel changeNameResponse);
+    String successMessage(BaseModel changeNameResponse);
 
     // ---------- ошибки ----------
 

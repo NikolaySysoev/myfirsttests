@@ -4,6 +4,8 @@ import api.configs.BackendVersion;
 import api.models.BaseModel;
 import api.models.v1.requests.*;
 import api.models.v1.responses.*;
+import api.models.v2.requests.TransferWithFraudCheckRequest;
+import api.models.v2.responses.TransferWithFraudCheckResponse;
 import common.versioning.ApiVersionContext;
 
 import java.util.Map;
@@ -92,6 +94,19 @@ public enum Endpoint {
                     "/accounts/deposit",
                     api.models.v2.requests.DepositMoneyRequest.class,
                     api.models.v2.responses.DepositMoneyResponse.class)
+    )),
+
+    TRANSFER_WITH_FRAUD_CHECK(Map.of(
+            BackendVersion.V1, new Contract(
+                    "/accounts/transfer",
+                    TransferMoneyRequest.class,
+                    TransferMoneyResponse.class
+            ),
+            BackendVersion.V2, new Contract(
+                    "/accounts/transfer-with-fraud-check",
+                    api.models.v2.requests.TransferWithFraudCheckRequest.class,
+                    api.models.v2.responses.TransferWithFraudCheckResponse.class
+            )
     ));
 
     private final Map<BackendVersion, Contract> contracts;

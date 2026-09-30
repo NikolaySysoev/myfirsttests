@@ -16,7 +16,6 @@ import api.models.v2.responses.GetUserAccountsResponse;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Контракты актуальной версии (V2).
@@ -76,17 +75,8 @@ public class V2DtoFactory implements DtoFactory {
         return ExpectedError.atPath(versioned.getJsonPath(), versioned.getMessage());
     }
 
-    /** Ответ плоский: клиент приходит без обёртки. */
     @Override
-    public CustomerProfile changedName(BaseModel changeNameResponse) {
-        ChangeNameResponse response = (ChangeNameResponse) changeNameResponse;
-        return new CustomerProfile(
-                response.getId(), response.getUsername(), response.getName(), response.getRole(), List.of());
-    }
-
-    /** В актуальной версии сообщения об успехе в ответе нет. */
-    @Override
-    public Optional<String> successMessage(BaseModel changeNameResponse) {
-        return Optional.empty();
+    public String successMessage(BaseModel changeNameResponse) {
+        return ((ChangeNameResponse) changeNameResponse).getMessage();
     }
 }

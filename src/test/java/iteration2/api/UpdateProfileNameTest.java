@@ -69,13 +69,7 @@ public class UpdateProfileNameTest extends BaseApiTest {
 
         ModelAssertions.assertThatModels(changeNameRequest, changeNameResponse).match();
 
-        String newUserName = dto.changedName(changeNameResponse).getName();
-        softly.assertThat(newUserName).isEqualTo(DEFAULT_VALID_NAME);
-
-        // сообщение об успехе есть только в легаси-контракте: в актуальной версии
-        // ответ его не содержит, поэтому проверяем там, где оно вообще приходит
-        dto.successMessage(changeNameResponse)
-                .ifPresent(message -> softly.assertThat(message).isEqualTo(DEFAULT_SUCCESS_MESSAGE));
+        softly.assertThat(dto.successMessage(changeNameResponse)).isEqualTo(DEFAULT_SUCCESS_MESSAGE);
 
         var userProfile = SessionStorage.actAsUser().getCustomerProfile();
         String profileName = userProfile.getName();

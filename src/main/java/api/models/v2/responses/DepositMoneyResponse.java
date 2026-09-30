@@ -17,5 +17,6 @@ public class DepositMoneyResponse extends BaseModel {
     private long id;
     private String accountNumber;
     private BigDecimal balance;
-    private List<TransactionResponse> transactions;
+    private BigDecimal depositAmount;
+    private long transactionId;
 }

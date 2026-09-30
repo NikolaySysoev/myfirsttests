@@ -16,7 +16,6 @@ import api.models.v1.responses.GetUserAccountsResponse;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Контракты легаси-версии (V1).
@@ -75,15 +74,7 @@ public class V1DtoFactory implements DtoFactory {
     }
 
     @Override
-    public CustomerProfile changedName(BaseModel changeNameResponse) {
-        ChangeNameResponse response = (ChangeNameResponse) changeNameResponse;
-        var customer = response.getCustomer();
-        return new CustomerProfile(
-                customer.getId(), customer.getUsername(), customer.getName(), customer.getRole(), List.of());
-    }
-
-    @Override
-    public Optional<String> successMessage(BaseModel changeNameResponse) {
-        return Optional.ofNullable(((ChangeNameResponse) changeNameResponse).getMessage());
+    public String successMessage(BaseModel changeNameResponse) {
+        return ((ChangeNameResponse) changeNameResponse).getMessage();
     }
 }
