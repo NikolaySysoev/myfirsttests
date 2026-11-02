@@ -14,7 +14,10 @@ services:
       # Имя переменной соответствует property бэка fraud.detection.service.url;
       # изменения подхватываются только пересозданием контейнера (up -d --force-recreate),
       # docker compose restart читает старый конфиг.
-      - FRAUD_DETECTION_SERVICE_URL=http://host.docker.internal:8080
+      # 8089, а не 8080: 8080 на хосте занят selenoid-ui.
+      # Адрес один для обоих сценариев: при прогоне из IDEA мок слушает на хосте,
+      # при прогоне в Docker run-tests.sh пробрасывает 8089 контейнера с тестами на хост.
+      - FRAUD_DETECTION_SERVICE_URL=http://host.docker.internal:8089
     depends_on:
       - postgres
     networks:

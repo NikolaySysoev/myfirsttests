@@ -6,8 +6,10 @@ import lombok.Getter;
 /**
  * Версия бэкенда, на которой выполняется тест.
  * <p>
- * Здесь и только здесь живёт знание о том, где физически стоит каждая версия
- * (порт), какой префикс пути она использует и есть ли у неё внешнее хранилище.
+ * Здесь живёт знание о том, под каким ключом конфига лежит адрес каждой версии,
+ * какой префикс пути она использует и есть ли у неё внешнее хранилище.
+ * Сам адрес (хост + порт) берётся из {@link Config} — его можно переопределить
+ * через -D или переменную окружения, например при запуске в Docker.
  * Добавление новой версии — одна строка в этом enum'е; все switch'и по версии
  * становятся неисчерпывающими, и компилятор сам покажет места, которые нужно
  * дописать.
@@ -18,23 +20,35 @@ public enum BackendVersion {
 
     /**
      * Легаси-бэк. Данные держит в памяти, внешней БД у него нет — поэтому
-     * {@code dbUrl} равен null, и проверки на уровне БД для этой версии
+     * {@code dbUrlKey} равен null, и проверки на уровне БД для этой версии
      * невыполнимы (см. {@code DbChecks}).
      */
-    V1(4112, "/api/v1", null),
+    V1("apiBaseUrl.v1", "/api/v1", null),
 
     /** Актуальный бэк. Версия по умолчанию, данные лежат в postgres. */
-    V2(4111, "/api/v1", "jdbc:postgresql://localhost:5433/nbank");
+    V2("apiBaseUrl.v2", "/api/v1", "dbUrl.v2");
 
-    private final int port;
+    /** Ключ в конфиге, где лежит адрес версии (хост + порт), например {@code apiBaseUrl.v2}. */
+    private final String baseUrlKey;
     private final String basePath;
 
-    /** JDBC-адрес хранилища этой версии, либо null, если внешнего хранилища нет. */
-    private final String dbUrl;
+    /**
+     * Ключ в конфиге, где лежит JDBC-адрес хранилища версии (например {@code dbUrl.v2}),
+     * либо null, если внешнего хранилища у версии нет.
+     */
+    private final String dbUrlKey;
 
-    /** Полный базовый URI для RestAssured: хост + порт + префикс пути. */
+    /** Полный базовый URI для RestAssured: адрес из конфига + префикс пути. */
     public String baseUri() {
-        return "http://localhost:" + port + basePath;
+        return requiredProperty(baseUrlKey).replaceAll("/+$", "") + basePath;
+    }
+
+    /**
+     * JDBC-адрес хранилища этой версии из конфига.
+     * Вызывать только при {@link #hasDatabase()} — проверку делает {@link Config#getDbUrl()}.
+     */
+    public String getDbUrl() {
+        return requiredProperty(dbUrlKey);
     }
 
     /**
@@ -44,6 +58,17 @@ public enum BackendVersion {
      * конфигурацией её не появится.
      */
     public boolean hasDatabase() {
-        return dbUrl != null;
+        return dbUrlKey != null;
+    }
+
+    private String requiredProperty(String key) {
+        String value = Config.getProperty(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(
+                    "Не задана настройка версии " + this + ": ключ '" + key + "' в config.properties, "
+                            + "-D" + key + " или переменная окружения "
+                            + key.toUpperCase().replace('.', '_'));
+        }
+        return value;
     }
 }

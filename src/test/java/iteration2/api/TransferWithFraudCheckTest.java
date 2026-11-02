@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,6 +35,9 @@ import static common.mocks.fraud.FraudDecision.VERIFICATION_REQUIRED;
 
 @ApiVersion(V2)
 @ExtendWith(FraudCheckWireMockExtension.class)
+// мок фрод-сервиса один на всех — фиксированный порт 8089, его же знает бэк.
+// При параллельном прогоне тесты с моком идут строго по очереди, остальные — параллельно.
+@ResourceLock(FraudCheckMock.RESOURCE_LOCK)
 public class TransferWithFraudCheckTest extends BaseApiTest {
     private static final int FRAUD_SERVICE_ERROR_STATUS = 500;
     private static final double FALLBACK_RISK_SCORE = 0.5;

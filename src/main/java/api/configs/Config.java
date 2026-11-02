@@ -23,7 +23,30 @@ public class Config {
         }
     }
 
+    /**
+     * Значение настройки с учётом приоритетов:
+     * <ol>
+     *     <li>системное свойство JVM: {@code -DapiBaseUrl.v2=...}</li>
+     *     <li>переменная окружения: ключ в верхнем регистре, точки заменены на {@code _}
+     *         ({@code apiBaseUrl.v2 -> APIBASEURL_V2}, {@code db.username -> DB_USERNAME})</li>
+     *     <li>{@code config.properties}</li>
+     * </ol>
+     */
     public static String getProperty(String key){
+        // ПРИОРИТЕТ 1 - системное свойство: -DapiBaseUrl.v2=...
+        String systemValue = System.getProperty(key);
+        if (systemValue != null) {
+            return systemValue;
+        }
+
+        // ПРИОРИТЕТ 2 - переменная окружения: apiBaseUrl.v2 -> APIBASEURL_V2
+        String envKey = key.toUpperCase().replace('.', '_');
+        String envValue = System.getenv(envKey);
+        if (envValue != null) {
+            return envValue;
+        }
+
+        // ПРИОРИТЕТ 3 - config.properties
         return INSTANSE.properties.getProperty(key);
     }
 
@@ -36,8 +59,7 @@ public class Config {
     }
 
     /**
-     * Базовый URI активной версии: хост, порт и префикс пути.
-     * Порт и префикс заданы в {@link BackendVersion}, а не в config.properties.
+     * Базовый URI активной версии: адрес (хост + порт) из конфига и префикс пути из {@link BackendVersion}.
      */
     public static String getApiBaseUrl() {
         return getBackendVersion().baseUri();

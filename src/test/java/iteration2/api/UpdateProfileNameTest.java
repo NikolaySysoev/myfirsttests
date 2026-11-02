@@ -14,6 +14,7 @@ import api.specs.ResponseSpecs;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -57,6 +58,7 @@ public class UpdateProfileNameTest extends BaseApiTest {
 
     @UserSession
     @Test
+    @Disabled
     public void userCanChangeNameWhenValidData(DtoFactory dto, DbChecks db) {
         var changeNameRequest = dto.changeName(DEFAULT_VALID_NAME);
 

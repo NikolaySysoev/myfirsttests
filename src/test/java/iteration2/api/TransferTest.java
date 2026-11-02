@@ -28,7 +28,7 @@ import static iteration2.TestUtils.repeat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ApiVersion(V1) //тесты на трансфер гонятся на старой версии бэка, т.к. новая работает с фрод сервисом в отдельном файле
-public class TransferTests extends BaseApiTest {
+public class TransferTest extends BaseApiTest {
     private static final BigDecimal DEFAULT_DEPOSIT = new BigDecimal("5000");
 
     private long senderAccountId;

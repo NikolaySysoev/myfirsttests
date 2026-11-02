@@ -42,6 +42,12 @@ import java.lang.annotation.Target;
 public @interface FraudCheckMock {
 
     /**
+     * Имя ресурса для {@code @ResourceLock}: все тесты с моком делят порт {@link #port()},
+     * поэтому при параллельном прогоне их надо сериализовать.
+     */
+    String RESOURCE_LOCK = "fraud-check-mock";
+
+    /**
      * Как ведёт себя сервис фрод-проверки в этом тесте.
      */
     enum Behaviour {
@@ -115,7 +121,7 @@ public @interface FraudCheckMock {
      * поднимется, бэк до него не достучится и уйдёт в аварийную ветку. Менять только
      * вместе с docker-compose.yml.
      */
-    int port() default 8080;
+    int port() default 8089;
 
     /**
      * Путь, который мокаем. Задан бэком: он делает {@code POST {url}/fraud-check}.
