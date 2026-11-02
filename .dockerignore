@@ -1,0 +1,20 @@
+# Результаты сборки и прогонов — в образе пересоздаются
+target/
+build/
+allure-results/
+logs/
+test-output/
+
+# Git и IDE
+.git/
+.gitignore
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Инфраструктура и документация тестам внутри контейнера не нужны
+infra/
+docs/
+Dockerfile
+.dockerignore
