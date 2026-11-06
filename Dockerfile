@@ -34,12 +34,16 @@ USER root
 # mvn -DskipTests=true surfire-report:report
 # лог выводился не в консаль, а в файл
 # bash file
+# TEST_PROFILE=all — все тесты (mvn test без профиля), иначе api или ui.
+# Код выхода контейнера = код выхода mvn test, чтобы скрипт запуска видел падения.
 CMD /bin/bash -c " \
     mkdir -p /app/logs ; \
     { \
     echo '>>> Running tests with profile: ${TEST_PROFILE}' ; \
-    mvn test -P ${TEST_PROFILE} ; \
+    if [ '${TEST_PROFILE}' = 'all' ]; then mvn test ; else mvn test -P ${TEST_PROFILE} ; fi ; \
+    status=\$? ; \
     \
     echo '>>> Running surefire-report:report' ; \
     mvn -DskipTests=true surefire-report:report ; \
+    exit \$status ; \
    } > /app/logs/run.log 2>&1"
